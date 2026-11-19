@@ -2,14 +2,14 @@
 "use strict";
 const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
-const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[]});
+const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[],marketReports:[]});
 let state=blank(),sflState=blankSfl(),scanCandidates=[],autoEvents=[];
 const notice=msg=>{$("notice").textContent=msg};
 function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function load(){const db=await dbOpen();const values=await new Promise((res,rej)=>{const t=db.transaction(STORE,"readonly"),s=t.objectStore(STORE),a=s.get("data"),b=s.get("sunflower-land-data");t.oncomplete=()=>res([a.result||blank(),b.result||blankSfl()]);t.onerror=()=>rej(t.error)});db.close();state=valid(values[0])?values[0]:blank();sflState=validSfl(values[1])?values[1]:blankSfl();render();renderSfl();if(typeof renderAutoEvents==="function")renderAutoEvents()}
 async function save(){const db=await dbOpen();await new Promise((res,rej)=>{const t=db.transaction(STORE,"readwrite");t.objectStore(STORE).put(state,"data");t.oncomplete=res;t.onerror=()=>rej(t.error)});db.close();render()}
 function valid(x){return x&&x.schemaVersion===1&&x.gameId==="pixel-worlds"&&["inventory","worlds","events"].every(k=>Array.isArray(x[k])&&x[k].length<10000)}
-function validSfl(x){return x&&x.schemaVersion===1&&x.gameId==="sunflower-land"&&["inventory","crops","goals"].every(k=>Array.isArray(x[k])&&x[k].length<10000)}
+function validSfl(x){return x&&x.schemaVersion===1&&x.gameId==="sunflower-land"&&["inventory","crops","goals"].every(k=>Array.isArray(x[k])&&x[k].length<10000)&&(x.marketReports===undefined||(Array.isArray(x.marketReports)&&x.marketReports.length<1000))}
 async function saveSfl(){const db=await dbOpen();await new Promise((res,rej)=>{const t=db.transaction(STORE,"readwrite");t.objectStore(STORE).put(sflState,"sunflower-land-data");t.oncomplete=res;t.onerror=()=>rej(t.error)});db.close();renderSfl()}
 function showSflForm(id){$(id).classList.remove("hidden");$(id).querySelector("input")?.focus()}
 function hideSflForm(id){$(id).reset();$(id).classList.add("hidden")}
@@ -28,7 +28,54 @@ $("sflItemForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.cu
 $("sflCropForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.crops.push({id:id(),name:f.get("name").trim(),quantity:Number(f.get("quantity")),status:f.get("status"),harvestDate:f.get("harvestDate"),notes:f.get("notes").trim()});hideSflForm("sflCropForm");await saveSfl()};
 $("sflGoalForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.goals.push({id:id(),name:f.get("name").trim(),current:Number(f.get("current")),goal:Number(f.get("goal")),notes:f.get("notes").trim()});hideSflForm("sflGoalForm");await saveSfl()};
 function renderSflList(kind,container){const root=$(container),items=sflState[kind];if(!items.length){root.innerHTML='<div class="empty">Belum ada catatan. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=items.map(x=>{let detail="",badge=kind==="inventory"?(x.category||"Item"):kind==="crops"?(x.status||"Farm"):"Target",pct=0;if(kind==="inventory")detail="Jumlah: "+Number(x.quantity||0).toLocaleString("id-ID");if(kind==="crops")detail=Number(x.quantity||0)+" unit"+(x.harvestDate?" · Panen: "+x.harvestDate:"");if(kind==="goals"){pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;detail=Number(x.current||0)+" / "+Number(x.goal||0)+" ("+pct+"%)"}return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">'+esc(badge)+'</span></div><div class="recurring-next"><span>'+(kind==="goals"?"Progress target":"Catatan")+'</span><strong>'+esc(detail)+'</strong>'+(kind==="goals"?'<div class="progress"><span style="width:'+pct+'%"></span></div>':"")+'</div><p class="data-note">'+esc(x.notes||"Tanpa catatan")+'</p></div><div class="item-actions"><button class="btn danger" data-sfl-remove="'+kind+'" data-id="'+esc(x.id)+'">Hapus</button></div></article>'}).join("")}
-function renderSfl(){ $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
+
+function validMarketReport(x){
+ if(!x||x.type!=="sfl-market-report"||x.schemaVersion!==1||typeof x.observedAt!=="string"||!Number.isFinite(Date.parse(x.observedAt)))return false;
+ const numeric=v=>v===null||v===undefined||(typeof v==="number"&&Number.isFinite(v)&&v>=0);
+ return numeric(x.walletBalance)&&numeric(x.confirmedReceipts)&&numeric(x.target)&&Array.isArray(x.marketPrices||[])&&Array.isArray(x.transactions||[]);
+}
+function renderMarketReports(){
+ const root=$("sflMarketList");if(!root)return;
+ const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
+ if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan market. Tempel JSON dari Pantau Harian Market SFL untuk mulai.</div>';return}
+ root.innerHTML=reports.slice(0,20).map((r,i)=>{
+  const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"});
+  const wallet=r.walletBalance==null?"Saldo belum tersedia":Number(r.walletBalance).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
+  const target=Number(r.target||410),balance=r.walletBalance;
+  const pct=balance==null||!target?null:Math.min(100,Math.round(balance/target*100));
+  const progress=pct==null?"Progres belum dapat dihitung":pct+"% dari target "+target+" FLOWER";
+  const prices=(r.marketPrices||[]).slice(0,5).map(p=>esc(p.item||"Item")+": Last Sale "+(p.lastSale==null?"—":p.lastSale)+" · Floor "+(p.floor==null?"—":p.floor)).join("<br>");
+  return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>Market SFL · '+date+'</b><span class="recurring-badge">Laporan '+(reports.length-i)+'</span></div><div class="recurring-next"><span>Saldo wallet</span><strong>'+wallet+'</strong><small>'+progress+'</small></div>'+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':'')+(prices?'<p class="data-note">'+prices+'</p>':'')+'</div><div class="item-actions"><button class="btn danger" data-market-remove="'+esc(r.id)+'">Hapus</button></div></article>'
+ }).join("");
+}
+$("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
+$("sflImportMarketBtn").onclick=async()=>{
+ const status=$("sflMarketStatus"),raw=$("sflMarketJson").value.trim();
+ if(!raw){status.textContent="Tempel JSON laporan terlebih dahulu.";return}
+ try{
+  const cleaned=raw.replace(/^\s*```(?:json)?\s*/i,"").replace(/\s*```\s*$/,"");
+  const parsed=JSON.parse(cleaned);
+  const reports=Array.isArray(parsed)?parsed:[parsed];
+  if(!reports.length||reports.length>100||!reports.every(validMarketReport))throw new Error("Format JSON tidak sesuai. Pastikan memakai blok JSON laporan SFL dari Scheduled Task.");
+  sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
+  let added=0;
+  for(const report of reports){
+   const normalized={...report,id:report.id||("market-"+Date.parse(report.observedAt))};
+   const index=sflState.marketReports.findIndex(x=>x.id===normalized.id);
+   if(index>=0)sflState.marketReports[index]=normalized;else{sflState.marketReports.push(normalized);added++}
+  }
+  sflState.marketReports=sflState.marketReports.slice(-100);
+  await saveSfl();status.textContent=added+" laporan baru diimpor; "+(reports.length-added)+" diperbarui/duplikat. Tersimpan lokal di perangkat ini.";
+ }catch(error){status.textContent=error.message||"JSON tidak valid; data tidak diubah."}
+};
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-market-remove]");if(!b)return;
+ const item=sflState.marketReports.find(x=>x.id===b.dataset.marketRemove);
+ if(!item||!confirm("Hapus laporan market ini?"))return;
+ sflState.marketReports=sflState.marketReports.filter(x=>x.id!==item.id);await saveSfl();$("sflMarketStatus").textContent="Laporan dihapus.";
+});
+
+function renderSfl(){ sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sfl-remove]");if(!b)return;const kind=b.dataset.sflRemove,item=sflState[kind].find(x=>x.id===b.dataset.id);if(!item||!confirm('Hapus "'+item.name+'"?'))return;sflState[kind]=sflState[kind].filter(x=>x.id!==item.id);saveSfl()});
 
 function id(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2)}
