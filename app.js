@@ -37,25 +37,34 @@ function validMarketReport(x){
 function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
- if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan harga. Impor laporan Pantau Harian Market SFL untuk mulai membandingkan harga.</div>';return}
+ if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const r0=reports[0],actual=r0.walletBalance!=null,balance=actual?r0.walletBalance:r0.confirmedReceipts,target=Number(r0.target||410),remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
- const targetHtml='<div class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi awal")+'</span></div><div class="recurring-next"><span>'+(actual?"Saldo wallet":"Penerimaan bersih tercatat")+'</span><strong>'+fmt(balance)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Kurang "+fmt(remaining)+" FLOWER lagi")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.6320 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</div>';
- root.innerHTML=targetHtml+reports.slice(0,20).map((r,i)=>{
-  const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}),older=reports.slice(i+1);
-  const prices=(r.marketPrices||[]).map(p=>{
-   const metricKey=p.p2pPrice!=null?"p2pPrice":"lastSale";
-   const previous=older.flatMap(x=>x.marketPrices||[]).find(x=>String(x.item||"").toLowerCase()===String(p.item||"").toLowerCase()&&x[metricKey]!=null);
-   let trend=p.trend||"unknown";
-   if(previous&&p[metricKey]!=null){const now=Number(p[metricKey]),before=Number(previous[metricKey]);if(Number.isFinite(now)&&Number.isFinite(before))trend=now>before?"up":now<before?"down":"stable"}
-   const trendLabel=trend==="up"?"↗ Naik":trend==="down"?"↘ Turun":trend==="stable"?"→ Stabil":"Belum cukup data";
-   const recommendation=p.recommendation||(trend==="up"?"Layak dipertimbangkan untuk dijual":trend==="down"?"Tahan dulu":"Data belum cukup");
-   const priceCells=p.p2pPrice!=null?'<span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span>':'<span>Last Sale<strong>'+fmt(p.lastSale)+'</strong></span>';
-   const extraCells=(p.floor!=null?'<span>Floor<strong>'+fmt(p.floor)+'</strong></span>':"")+(p.currentListing!=null?'<span>Listing<strong>'+fmt(p.currentListing)+'</strong></span>':"");
-   return '<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item||"Item")+'</b><span class="recurring-badge">'+trendLabel+'</span></div><div class="market-price-grid">'+priceCells+extraCells+'</div><p class="data-note"><b>'+esc(recommendation)+'</b></p><p class="data-note">'+(p.source?"Sumber: "+esc(p.source):"Sumber tidak dicantumkan")+(p.observedAt?" · "+esc(p.observedAt):"")+'</p></div></article>';
-  }).join("");
-  return '<details class="event-items market-report" '+(i===0?"open":"")+'><summary><b>Pantauan '+date+'</b><span class="inventory-count">'+(r.marketPrices||[]).length+' item</span></summary><div class="event-items-scroll"><div class="list">'+(prices||'<div class="empty">Belum ada data harga pada laporan ini.</div>')+'</div>'+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':"")+'</div></details>';
- }).join("");
+ const latest=reports[0],previous=reports.slice(1).find(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null));
+ const actual=latest.walletBalance!=null,balance=actual?latest.walletBalance:latest.confirmedReceipts,target=Number(latest.target||410);
+ const remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
+ const targetHtml='<section class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Perkembangan target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi penerimaan")+'</span></div><div class="recurring-next"><strong>'+fmt(balance)+' / '+fmt(target)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Tersisa "+fmt(remaining)+" FLOWER")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.632 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</section>';
+ const olderPrices=new Map();
+ for(const report of reports.slice(1)){
+  for(const p of report.marketPrices||[]){
+   if(p.p2pPrice!=null&&!olderPrices.has(String(p.item||"").toLowerCase()))olderPrices.set(String(p.item||"").toLowerCase(),Number(p.p2pPrice));
+  }
+ }
+ const items=(latest.marketPrices||[]).filter(p=>p.p2pPrice!=null).map(p=>{
+  const before=olderPrices.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
+  const trend=before==null?"unknown":now>before?"up":now<before?"down":"stable";
+  const change=before!=null&&before!==0?((now-before)/before*100):null;
+  return {...p,trend,change};
+ });
+ const rising=items.filter(p=>p.trend==="up").sort((a,b)=>(b.change||0)-(a.change||0));
+ const risingHtml=rising.length?rising.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">↗ Naik</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span><span>Kenaikan<strong>+'+p.change.toFixed(2)+'%</strong></span></div></div></article>').join(""):'<div class="empty">Belum ada item yang terbukti naik. Dibutuhkan minimal dua snapshot.</div>';
+ const recommendations=items.map(p=>{
+  const label=p.trend==="up"?"Layak dipertimbangkan untuk dijual":p.trend==="down"?"Tahan dulu":"Tahan dulu · data belum cukup";
+  const trendLabel=p.trend==="up"?"↗ Naik":p.trend==="down"?"↘ Turun":p.trend==="stable"?"→ Stabil":"Belum cukup data";
+  return {...p,label,trendLabel};
+ }).sort((a,b)=>a.trend==="up"?-1:b.trend==="up"?1:a.trend==="down"?-1:b.trend==="down"?1:a.item.localeCompare(b.item));
+ const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span><span>Keputusan<strong>'+esc(p.label)+'</strong></span></div></div></article>').join(""):'<div class="empty">Belum ada harga P2P yang tersedia.</div>';
+ const observed=latest.observedAt?new Date(latest.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
+ root.innerHTML=targetHtml+'<section class="section-head"><h3>Item yang harganya sedang naik</h3><span class="small muted">'+rising.length+' item</span></section><div class="list">'+risingHtml+'</div><section class="section-head"><h3>Rekomendasi jual atau tahan</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Tren dihitung dari snapshot terbaru dibandingkan snapshot sebelumnya. Kenaikan harga bukan jaminan barang pasti terjual.</p>';
 }
 $("sflFetchMarketBtn").onclick=()=>loadSflMarketFeed();
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
