@@ -30,8 +30,7 @@ $("sflGoalForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.cu
 function renderSflList(kind,container){const root=$(container),items=sflState[kind];if(!items.length){root.innerHTML='<div class="empty">Belum ada catatan. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=items.map(x=>{let detail="",badge=kind==="inventory"?(x.category||"Item"):kind==="crops"?(x.status||"Farm"):"Target",pct=0;if(kind==="inventory")detail="Jumlah: "+Number(x.quantity||0).toLocaleString("id-ID");if(kind==="crops")detail=Number(x.quantity||0)+" unit"+(x.harvestDate?" · Panen: "+x.harvestDate:"");if(kind==="goals"){pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;detail=Number(x.current||0)+" / "+Number(x.goal||0)+" ("+pct+"%)"}return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">'+esc(badge)+'</span></div><div class="recurring-next"><span>'+(kind==="goals"?"Progress target":"Catatan")+'</span><strong>'+esc(detail)+'</strong>'+(kind==="goals"?'<div class="progress"><span style="width:'+pct+'%"></span></div>':"")+'</div><p class="data-note">'+esc(x.notes||"Tanpa catatan")+'</p></div><div class="item-actions"><button class="btn danger" data-sfl-remove="'+kind+'" data-id="'+esc(x.id)+'">Hapus</button></div></article>'}).join("")}
 function renderSfl(){ $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sfl-remove]");if(!b)return;const kind=b.dataset.sflRemove,item=sflState[kind].find(x=>x.id===b.dataset.id);if(!item||!confirm('Hapus "'+item.name+'"?'))return;sflState[kind]=sflState[kind].filter(x=>x.id!==item.id);saveSfl()});
-$("sflExportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(sflState,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ugm-sunflower-land-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);$("sflNotice").textContent="Backup Sunflower Land berhasil dibuat."};
-$("sflImportFile").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw 0;const parsed=JSON.parse(await file.text());if(!validSfl(parsed))throw 0;if(!confirm("Impor akan mengganti data Sunflower Land saja. Lanjutkan?"))return;sflState=parsed;await saveSfl();$("sflNotice").textContent="Backup Sunflower Land dipulihkan."}catch{$("sflNotice").textContent="File tidak valid. Data lama tidak diubah."}finally{e.target.value=""}};
+
 function id(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2)}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function showForm(id){$(id).classList.remove("hidden");$(id).querySelector("input")?.focus()}
@@ -160,8 +159,36 @@ $("autoEventList").addEventListener("click",async e=>{
  $("autoEventStatus").textContent="Event ditambahkan ke Daftar Event.";
 });
 document.addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b)remove(b.dataset.remove,b.dataset.id)});
-$("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ugm-pixel-worlds-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notice("Backup berhasil dibuat. Simpan file di tempat aman.")};
-$("importFile").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw 0;const parsed=JSON.parse(await file.text());if(!valid(parsed))throw 0;if(!confirm("Impor akan mengganti semua data Pixel Worlds di browser ini. Lanjutkan?"))return;state=parsed;await save();notice("Backup berhasil dipulihkan.")}catch{notice("File tidak valid atau gagal dibaca. Data lama tidak diubah.")}finally{e.target.value=""}};
+function exportAllData(){
+ const payload={app:"universal-game-manager",schemaVersion:1,exportedAt:new Date().toISOString(),games:{"pixel-worlds":state,"sunflower-land":sflState}};
+ const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download="ugm-full-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ notice("Backup seluruh game berhasil dibuat.");$("sflNotice").textContent="Backup seluruh game berhasil dibuat.";
+}
+async function importAllData(event){
+ const input=event.target,file=input.files?.[0];if(!file)return;
+ try{
+  if(file.size>10*1024*1024)throw new Error("Ukuran file melebihi 10 MB.");
+  const parsed=JSON.parse(await file.text());
+  let nextPixel=state,nextSfl=sflState,hasPixel=false,hasSfl=false;
+  if(parsed?.app==="universal-game-manager"&&parsed.schemaVersion===1&&parsed.games){
+   if(!valid(parsed.games["pixel-worlds"])||!validSfl(parsed.games["sunflower-land"]))throw new Error("Struktur backup tidak valid.");
+   nextPixel=parsed.games["pixel-worlds"];nextSfl=parsed.games["sunflower-land"];hasPixel=hasSfl=true;
+  }else if(valid(parsed)){nextPixel=parsed;hasPixel=true}
+  else if(validSfl(parsed)){nextSfl=parsed;hasSfl=true}
+  else throw new Error("Format backup tidak dikenali.");
+  const scope=hasPixel&&hasSfl?"Pixel Worlds dan Sunflower Land":hasPixel?"Pixel Worlds saja (format backup lama)":"Sunflower Land saja (format backup lama)";
+  if(!confirm("Pulihkan data "+scope+"? Data game yang termasuk di dalam file akan diganti."))return;
+  state=nextPixel;sflState=nextSfl;
+  if(hasPixel)await save();if(hasSfl)await saveSfl();
+  notice("Backup berhasil dipulihkan: "+scope+".");$("sflNotice").textContent="Backup berhasil dipulihkan: "+scope+".";
+ }catch(error){
+  const message=error.message||"File tidak valid. Data tidak diubah.";
+  notice(message);$("sflNotice").textContent=message;
+ }finally{input.value=""}
+}
+$("exportAllBtn").onclick=exportAllData;$("sflExportAllBtn").onclick=exportAllData;
+$("importAllFile").onchange=importAllData;$("sflImportAllFile").onchange=importAllData;
 
 // OCR: preprocess image at multiple scales/thresholds, then compare Tesseract PSM results.
 function preprocess(file,mode){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const maxW=2400,scale=Math.min(3,Math.max(1.8,maxW/img.width));const c=document.createElement("canvas");c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(img,0,0,c.width,c.height);const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;for(let i=0;i<d.length;i+=4){let g=(d[i]*.299+d[i+1]*.587+d[i+2]*.114);if(mode===1)g=g<145?0:255;else if(mode===2)g=Math.max(0,Math.min(255,(g-128)*1.65+128));d[i]=d[i+1]=d[i+2]=g;}ctx.putImageData(im,0,0);c.toBlob(b=>{URL.revokeObjectURL(url);b?resolve(b):reject(Error("Gagal memproses gambar"))},"image/png")}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error("Gambar tidak dapat dibuka"))};img.src=url})}
