@@ -1,0 +1,33 @@
+name: Sync Sunflower Land P2P prices
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sync-sfl-market-prices
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch public SFL.world P2P prices
+        run: node scripts/sync-sfl-market.mjs
+      - name: Commit updated market feed
+        run: |
+          if git diff --quiet -- market-feed.json; then
+            echo "No market feed changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add market-feed.json
+          git commit -m "chore: sync Sunflower Land P2P prices"
+          git push
