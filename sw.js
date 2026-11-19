@@ -1,5 +1,5 @@
-const CACHE="ugm-pw-v25";
-const FILES=["./","./index.html","./app.js?v=25","./manifest.webmanifest"];
+const CACHE="ugm-pw-v26";
+const FILES=["./","./index.html","./app.js?v=26","./manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
   event.waitUntil((async()=>{
