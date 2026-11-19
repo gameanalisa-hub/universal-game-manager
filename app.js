@@ -49,7 +49,7 @@ function parseAiInventory(text){
   if(/^\|?\s*:?-{2,}/.test(line))continue;
   if(/^(player|posisi|yang paling penting|hotbar atas|inventory|baris [0-9]|slot\s+item)/i.test(line.replace(/^#+\s*/,"")))continue;
   if(line.includes("|")){
-   const p=line.split("|").map(x=>clean(x));
+   const p=line.split("|").map(x=>clean(x)).filter(Boolean);
    if(p.length>=3){
     const first=p[0].replace(/[^0-9]/g,""),last=p[p.length-1].replace(/[^0-9]/g,"");
     if(first&&last){add(p.slice(1,-1).join(" ").replace(/^\*|\*$/g,""),last);continue}
