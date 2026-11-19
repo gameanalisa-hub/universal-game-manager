@@ -3,7 +3,7 @@
 const DB="ugm_pw_module", VERSION=1, STORE="state";
 const $=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
-let state=blank();
+let state=blank(), scanCandidates=[];
 const notice=msg=>{$("notice").textContent=msg};
 function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function load(){const db=await dbOpen();state=await new Promise((res,rej)=>{const t=db.transaction(STORE,"readonly"),r=t.objectStore(STORE).get("data");r.onsuccess=()=>res(r.result||blank());r.onerror=()=>rej(r.error)});db.close();if(!valid(state))state=blank();render()}
@@ -32,6 +32,66 @@ $("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small mut
 document.addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b)remove(b.dataset.remove,b.dataset.id)});
 $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ugm-pixel-worlds-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notice("Backup berhasil dibuat. Simpan file di tempat aman.")};
 $("importFile").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw 0;const parsed=JSON.parse(await file.text());if(!valid(parsed))throw 0;if(!confirm("Impor akan mengganti semua data Pixel Worlds di browser ini. Lanjutkan?"))return;state=parsed;await save();notice("Backup berhasil dipulihkan.")}catch{notice("File tidak valid atau gagal dibaca. Data lama tidak diubah.")}finally{e.target.value=""}};
+
+// OCR: the selected image is processed in this browser. Only user-approved rows are saved.
+$("scanFile").onchange=async e=>{
+ const file=e.target.files?.[0];if(!file)return;
+ $("scanReview").classList.add("hidden");$("scanStatus").textContent="Menyiapkan OCR…";
+ try{
+  if(!file.type.startsWith("image/"))throw new Error("File harus berupa gambar.");
+  if(file.size>12*1024*1024)throw new Error("Ukuran gambar maksimal 12 MB.");
+  if(!window.Tesseract)throw new Error("Library OCR belum termuat. Periksa koneksi internet lalu muat ulang UGM.");
+  const worker=await Tesseract.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text")$("scanStatus").textContent=`Membaca screenshot… ${Math.round((m.progress||0)*100)}%`;}});
+  let result;
+  try{result=await worker.recognize(file)}finally{await worker.terminate()}
+  const raw=result.data.text||"";
+  $("rawOcr").value=raw;
+  scanCandidates=raw.split(/\r?\n/).map(line=>{
+    const clean=line.replace(/[|]/g," ").replace(/\s+/g," ").trim();
+    const match=clean.match(/^(.{2,70}?)\s+([\d,]{1,12})$/);
+    if(!match)return null;
+    const name=match[1].replace(/^[^A-Za-z]+/,"").trim();
+    const quantity=Number(match[2].replace(/,/g,""));
+    if(!name||!Number.isSafeInteger(quantity)||quantity<0)return null;
+    return {name,quantity,category:"Other",selected:true};
+  }).filter(Boolean);
+  if(!scanCandidates.length){
+   $("scanStatus").textContent="Teks berhasil dibaca, tetapi nama dan jumlah item belum bisa dipisahkan otomatis. Lihat teks OCR mentah; tahap ini belum mengubah Inventory.";
+   $("scanReview").classList.remove("hidden");
+   $("scanRows").innerHTML='<p class="muted small">Tidak ada baris yang cocok otomatis. Coba screenshot yang lebih jelas atau gunakan Tambah item.</p>';
+   $("saveScanBtn").disabled=true;
+   return;
+  }
+  renderScanRows();$("scanReview").classList.remove("hidden");$("saveScanBtn").disabled=false;
+  $("scanStatus").textContent=`Selesai membaca. Ditemukan ${scanCandidates.length} kandidat item. Periksa sebelum menyimpan.`;
+ }catch(err){$("scanStatus").textContent=err.message||"OCR gagal dijalankan."}
+};
+function renderScanRows(){
+ $("scanRows").innerHTML=scanCandidates.map((x,i)=>`<div class="scan-row">
+ <label><input type="checkbox" data-scan-check="${i}" ${x.selected?"checked":""}> Pilih · Nama item<input data-scan-name="${i}" maxlength="70" value="${esc(x.name)}"></label>
+ <label>Jumlah<input data-scan-qty="${i}" type="number" min="0" step="1" value="${x.quantity}"></label>
+ <label>Kategori<select data-scan-cat="${i}">${["Blocks","Seeds","Event Items","Wearables","Currency","Other"].map(c=>`<option ${c===x.category?"selected":""}>${c}</option>`).join("")}</select></label>
+ </div>`).join("");
+}
+$("scanRows").addEventListener("input",e=>{
+ const n=e.target;
+ for(const [attr,key] of [["data-scan-name","name"],["data-scan-qty","quantity"],["data-scan-cat","category"]]){
+  if(n.hasAttribute(attr)){const i=Number(n.getAttribute(attr));scanCandidates[i][key]=key==="quantity"?Number(n.value):n.value;break;}
+ }
+});
+$("scanRows").addEventListener("change",e=>{const n=e.target;if(n.hasAttribute("data-scan-check"))scanCandidates[Number(n.getAttribute("data-scan-check"))].selected=n.checked});
+$("saveScanBtn").onclick=async()=>{
+ const chosen=scanCandidates.filter(x=>x.selected&&x.name.trim()&&Number.isSafeInteger(x.quantity)&&x.quantity>=0);
+ if(!chosen.length){$("scanStatus").textContent="Tidak ada item valid yang dipilih.";return}
+ for(const x of chosen){
+  const existing=state.inventory.find(y=>y.name.trim().toLowerCase()===x.name.trim().toLowerCase()&&y.category===x.category);
+  if(existing){existing.quantity=x.quantity;existing.notes="Diperbarui dari Scan Inventory";}
+  else state.inventory.push({id:id(),name:x.name.trim(),category:x.category,quantity:x.quantity,notes:"Dari Scan Inventory"});
+ }
+ await save();$("scanStatus").textContent=`Berhasil menyimpan ${chosen.length} item. Item yang cocok diperbarui; item baru ditambahkan.`;
+ $("scanReview").classList.add("hidden");$("scanFile").value="";scanCandidates=[];
+};
+$("clearScanBtn").onclick=()=>{scanCandidates=[];$("scanFile").value="";$("scanReview").classList.add("hidden");$("scanStatus").textContent="Hasil scan dibatalkan. Inventory tidak berubah."};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 load().catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 })();
