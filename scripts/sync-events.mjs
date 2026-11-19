@@ -52,7 +52,7 @@ try {
   if (previous.game === "pixel-worlds" && Array.isArray(previous.items)) previousItems = previous.items;
 } catch {}
 const retained = previousItems.filter(item => item && (item.dateStatus === "unannounced" || item.dateStatus === "recurring-schedule-announced" || item.startDate || item.endDate));
-const merged = [...detected, ...retained.filter(item => !detected.some(found => found.id === item.id))].slice(0, 60);
+const merged = [...detected, ...retained.filter(item => !detected.some(found => found.id === item.id) && !(item.id === "pw-thanksgiving-2026-watch" && detected.some(found => /thanksgiving/i.test(found.title + " " + found.summary))))].slice(0, 60);
 const feed = {
   game: "pixel-worlds",
   source: "Steam Community Announcements",
