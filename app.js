@@ -2,7 +2,7 @@
 "use strict";
 const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
-let state=blank(),scanCandidates=[];
+let state=blank(),scanCandidates=[],autoEvents=[];
 const notice=msg=>{$("notice").textContent=msg};
 function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function load(){const db=await dbOpen();state=await new Promise((res,rej)=>{const t=db.transaction(STORE,"readonly"),r=t.objectStore(STORE).get("data");r.onsuccess=()=>res(r.result||blank());r.onerror=()=>rej(r.error)});db.close();if(!valid(state))state=blank();render()}
@@ -21,6 +21,45 @@ $("eventForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.curr
 function remove(kind,key){const entry=state[kind].find(x=>x.id===key);if(!entry||!confirm(`Hapus "${entry.name}"?`))return;state[kind]=state[kind].filter(x=>x.id!==key);save()}
 function renderList(kind,container,detail){const root=$(container);if(!state[kind].length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=state[kind].map(x=>`<article class="item"><div class="item-main"><b>${esc(x.name)}</b><small>${detail(x)}</small></div><div class="item-actions"><button class="btn danger" data-remove="${kind}" data-id="${esc(x.id)}" aria-label="Hapus ${esc(x.name)}">Hapus</button></div></article>`).join("")}
 function render(){$("statItems").textContent=state.inventory.length;$("inventoryCount").textContent=state.inventory.length+" item";$("statWorlds").textContent=state.worlds.length;$("statEvents").textContent=state.events.length;$("eventCount").textContent=state.events.length+" event";renderList("inventory","inventoryList",x=>`${esc(x.category)} · ${x.quantity.toLocaleString("id-ID")} · ${esc(x.notes||"Tanpa catatan")}`);renderList("worlds","worldList",x=>`${esc(x.block||"Belum ada blok")} · ${x.quantity.toLocaleString("id-ID")} terpasang · ${esc(x.notes||"Tanpa catatan")}`);renderList("events","eventList",x=>{const pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;return `<small>${esc(x.target||"Tanpa target")} · ${x.current}/${x.goal}</small><div class="progress"><span style="width:${pct}%"></span></div>`});const recent=[...state.inventory.slice(-2).map(x=>`Inventory: ${esc(x.name)}`),...state.worlds.slice(-2).map(x=>`World: ${esc(x.name)}`),...state.events.slice(-2).map(x=>`Event: ${esc(x.name)}`)];$("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small muted">${x}</div>`).join(""):'<div class="small muted">Belum ada data tersimpan.</div>'}
+function renderAutoEvents(){
+ const root=$("autoEventList");
+ $("autoEventCount").textContent=autoEvents.length+" ditemukan";
+ if(!autoEvents.length){root.innerHTML='<div class="empty">Belum ada pengumuman event yang terdeteksi. Data akan diperiksa berkala oleh sinkronisasi otomatis.</div>';return}
+ root.innerHTML=autoEvents.map(x=>{
+  const date=x.publishedAt&&Number.isFinite(Date.parse(x.publishedAt))?new Date(x.publishedAt).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"Tanggal tidak tersedia";
+  const added=state.events.some(e=>e.name.toLowerCase()===String(x.title||"").toLowerCase());
+  return `<article class="item"><div class="item-main"><b>${esc(x.title)}</b><small>${esc(x.category||"Event")} · ${date}</small><p>${esc(x.summary||"")}</p><a href="${esc(x.url||"https://steamcommunity.com/app/636040/allnews/")}" target="_blank" rel="noopener noreferrer">Lihat pengumuman Steam</a></div><div class="item-actions">${added?'<span class="small muted">Sudah ditambahkan</span>':`<button class="btn primary" data-add-auto="${esc(x.id)}">Tambahkan</button>`}</div></article>`;
+ }).join("");
+}
+async function loadAutoEvents(){
+ const status=$("autoEventStatus");
+ status.textContent="Memuat pengumuman…";
+ try{
+  const response=await fetch("./events-feed.json?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const feed=await response.json();
+  if(feed.game!=="pixel-worlds"||!Array.isArray(feed.items))throw new Error("Format feed tidak valid");
+  autoEvents=feed.items.filter(x=>x&&typeof x.title==="string"&&typeof x.id==="string").slice(0,30);
+  const updated=feed.generatedAt&&Number.isFinite(Date.parse(feed.generatedAt))?new Date(feed.generatedAt).toLocaleString("id-ID"):"belum pernah";
+  status.textContent="Sumber Steam · diperbarui: "+updated;
+  renderAutoEvents();
+ }catch(error){
+  status.textContent="Belum dapat memuat feed otomatis ("+error.message+"). Coba lagi nanti.";
+  $("autoEventList").innerHTML='<div class="empty">Data pengumuman belum tersedia. Sinkronisasi otomatis akan mengisi bagian ini.</div>';
+ }
+}
+$("refreshAutoEvents").onclick=loadAutoEvents;
+$("autoEventList").addEventListener("click",async e=>{
+ const button=e.target.closest("[data-add-auto]");
+ if(!button)return;
+ const item=autoEvents.find(x=>x.id===button.dataset.addAuto);
+ if(!item)return;
+ if(state.events.some(x=>x.name.toLowerCase()===item.title.toLowerCase())){renderAutoEvents();return}
+ state.events.push({id:id(),name:item.title,target:"Pengumuman Steam · "+(item.category||"Event"),current:0,goal:0,sourceUrl:item.url||""});
+ await save();
+ renderAutoEvents();
+ $("autoEventStatus").textContent="Event ditambahkan ke Daftar Event.";
+});
 document.addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b)remove(b.dataset.remove,b.dataset.id)});
 $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ugm-pixel-worlds-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notice("Backup berhasil dibuat. Simpan file di tempat aman.")};
 $("importFile").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw 0;const parsed=JSON.parse(await file.text());if(!valid(parsed))throw 0;if(!confirm("Impor akan mengganti semua data Pixel Worlds di browser ini. Lanjutkan?"))return;state=parsed;await save();notice("Backup berhasil dipulihkan.")}catch{notice("File tidak valid atau gagal dibaca. Data lama tidak diubah.")}finally{e.target.value=""}};
@@ -76,5 +115,5 @@ $("scanBtn").onclick=async()=>{const file=$("scanFile").files?.[0];if(!file){$("
 $("cancelScanBtn").onclick=()=>{$("scanResults").classList.add("hidden");$("rawOcr").value="";$("scanRows").innerHTML="";scanCandidates=[];$("scanStatus").textContent="Hasil scan dibatalkan. Inventory tidak berubah."};
 $("saveScanBtn").onclick=async()=>{let count=0,skipped=0;for(let i=0;i<scanCandidates.length;i++){if(!$(`scanRows`).querySelector(`[data-sel="${i}"]`)?.checked)continue;const name=$(`scanRows`).querySelector(`[data-name="${i}"]`).value.trim(),quantity=Number($(`scanRows`).querySelector(`[data-qty="${i}"]`).value),category=$(`scanRows`).querySelector(`[data-cat="${i}"]`).value;if(!name||!Number.isInteger(quantity)||quantity<0||quantity>999){skipped++;continue}const existing=state.inventory.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.category===category);if(existing)existing.quantity=quantity;else state.inventory.push({id:id(),name,category,quantity,notes:"Diimpor dari OCR; periksa hasil scan"});count++}if(count){await save();$("scanStatus").textContent=count+" item disimpan"+(skipped?"; "+skipped+" dilewati karena jumlah harus 0–999":"")+". Item dengan nama dan kategori sama diperbarui, bukan digandakan."}else $("scanStatus").textContent=skipped?skipped+" item dilewati. Jumlah Inventory harus 0–999 per stack.":"Tidak ada item yang dipilih atau datanya tidak valid.";$("scanResults").classList.add("hidden")};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-load().catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
+load().catch(()=>notice("IndexedDB tidak tersedia di browser ini."));\nloadAutoEvents();
 })();
