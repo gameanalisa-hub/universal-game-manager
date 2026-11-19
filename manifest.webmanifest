@@ -1,0 +1,9 @@
+{
+  "name": "Universal Game Manager",
+  "short_name": "UGM",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#101827",
+  "description": "Local-first multi-game manager"
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101827">
+<meta name="description" content="Universal Game Manager — pengelola data game lokal.">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Universal Game Manager</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#141f31;--panel2:#1d2b42;--line:#2c3b54;--text:#edf3ff;--muted:#9eabc0;--accent:#83aaff;--green:#59d6a4;--red:#ff8585}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header{position:sticky;top:0;z-index:5;background:#0b1220ed;border-bottom:1px solid var(--line);backdrop-filter:blur(12px);padding:14px max(16px,calc((100% - 1050px)/2))}
+.brand{display:flex;align-items:center;gap:11px}.logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#477bdc,#765bc8);display:grid;place-items:center;font-weight:900;font-size:18px}.brand h1{font-size:16px;margin:0}.brand p{font-size:11px;color:var(--muted);margin:0}
+main{max-width:1050px;margin:auto;padding:22px 16px 50px}.hero{margin-bottom:20px}.eyebrow{color:var(--accent);font-weight:750;font-size:11px;letter-spacing:.13em;text-transform:uppercase}.hero h2{font-size:25px;margin:4px 0}.hero p{margin:0;color:var(--muted);max-width:650px}
+.tabs{display:flex;gap:7px;overflow:auto;padding:4px 0 14px;position:sticky;top:68px;background:var(--bg);z-index:4}.tab{white-space:nowrap;border:1px solid var(--line);border-radius:11px;padding:9px 13px;background:var(--panel);color:var(--muted);font-weight:700}.tab.active{background:#294b80;border-color:#527fc7;color:white}
+.panel{display:none}.panel.active{display:block}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px}.stat,.card{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:14px}.stat span{display:block;color:var(--muted);font-size:11px}.stat b{font-size:22px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}.section-head h3{margin:0;font-size:17px}.muted{color:var(--muted)}.small{font-size:12px}
+.btn{border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--panel2);color:var(--text);font-weight:700;cursor:pointer}.btn.primary{background:#315d9f;border-color:#4c7bc1}.btn.danger{color:#ffaaaa}.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.list{display:grid;gap:9px}.item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px}.item-main{min-width:0}.item-main b{display:block;overflow-wrap:anywhere}.item-main small{color:var(--muted)}.item-actions{display:flex;gap:6px;flex-shrink:0}.empty{padding:26px;text-align:center;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0 16px;padding:14px;background:#101a2a;border:1px solid var(--line);border-radius:14px}.form label{display:grid;gap:5px;color:var(--muted);font-size:12px}.form input,.form select,.form textarea{width:100%;min-width:0;background:#0b1423;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;font:inherit}.form .wide{grid-column:1/-1}.form-actions{display:flex;gap:8px;grid-column:1/-1}
+.progress{height:7px;background:#26354c;border-radius:20px;overflow:hidden;margin-top:8px}.progress span{display:block;height:100%;background:var(--green)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}.notice{min-height:20px;color:var(--muted);font-size:12px;margin-top:10px}.hidden{display:none!important}
+footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-size:11px}
+@media(max-width:560px){.stats{gap:7px}.stat{padding:10px}.stat b{font-size:19px}.form{grid-template-columns:1fr}.form .wide,.form-actions{grid-column:1}.item{align-items:flex-start}.item-actions .btn{padding:7px 8px;font-size:11px}}
+</style>
+</head>
+<body>
+<header><div class="brand"><div class="logo">UG</div><div><h1>Universal Game Manager</h1><p>Local-first · Multi-game foundation</p></div></div></header>
+<main>
+<section class="hero"><div class="eyebrow">Game module · 01</div><h2>Pixel Worlds Manager</h2><p>Kelola inventory, world, dan event Pixel Worlds. Data disimpan di browser perangkat ini dan tidak dikirim ke server.</p></section>
+<nav class="tabs" aria-label="Navigasi modul">
+<button class="tab active" data-tab="overview">Overview</button><button class="tab" data-tab="inventory">Inventory</button><button class="tab" data-tab="worlds">World</button><button class="tab" data-tab="events">Events</button><button class="tab" data-tab="backup">Backup</button>
+</nav>
+
+<section class="panel active" id="overview">
+<div class="stats">
+<div class="stat"><span>Item inventory</span><b id="statItems">0</b></div>
+<div class="stat"><span>World tercatat</span><b id="statWorlds">0</b></div>
+<div class="stat"><span>Event aktif</span><b id="statEvents">0</b></div>
+</div>
+<div class="card"><div class="section-head"><h3>Ringkasan Pixel Worlds</h3><span class="small muted">Data lokal</span></div><p class="muted small">Inventory dan blok yang terpasang di world dicatat terpisah. Tambahkan data melalui menu di atas.</p><div id="overviewRecent" class="list"></div></div>
+</section>
+
+<section class="panel" id="inventory">
+<div class="section-head"><h3>Inventory</h3><button class="btn primary" id="addItemBtn">＋ Tambah item</button></div>
+<form class="form hidden" id="itemForm">
+<label>Nama item<input name="name" maxlength="70" required placeholder="Contoh: Corn Block"></label>
+<label>Kategori<select name="category"><option>Blocks</option><option>Seeds</option><option>Event Items</option><option>Wearables</option><option>Currency</option><option>Other</option></select></label>
+<label>Jumlah<input name="quantity" type="number" min="0" step="1" required placeholder="0"></label>
+<label>Catatan<input name="notes" maxlength="120" placeholder="Opsional"></label>
+<div class="form-actions"><button class="btn primary" type="submit">Simpan item</button><button class="btn" type="button" data-cancel="itemForm">Batal</button></div>
+</form>
+<div id="inventoryList" class="list"></div>
+</section>
+
+<section class="panel" id="worlds">
+<div class="section-head"><h3>World Management</h3><button class="btn primary" id="addWorldBtn">＋ Tambah world</button></div>
+<form class="form hidden" id="worldForm">
+<label>Nama world<input name="name" maxlength="50" required placeholder="Nama world"></label>
+<label>Nama blok / tanaman<input name="block" maxlength="70" placeholder="Contoh: Corn Block"></label>
+<label>Jumlah terpasang<input name="quantity" type="number" min="0" step="1" value="0"></label>
+<label>Catatan<input name="notes" maxlength="120" placeholder="Opsional"></label>
+<div class="form-actions"><button class="btn primary" type="submit">Simpan world</button><button class="btn" type="button" data-cancel="worldForm">Batal</button></div>
+</form>
+<p class="muted small">Jumlah blok di world dicatat terpisah dari stok item di Inventory.</p>
+<div id="worldList" class="list"></div>
+</section>
+
+<section class="panel" id="events">
+<div class="section-head"><h3>Event Tracker</h3><button class="btn primary" id="addEventBtn">＋ Tambah event</button></div>
+<form class="form hidden" id="eventForm">
+<label>Nama event<input name="name" maxlength="70" required placeholder="Contoh: Thanksgiving Event"></label>
+<label>Target / reward<input name="target" maxlength="70" placeholder="Contoh: Pilgrim Hat"></label>
+<label>Progres saat ini<input name="current" type="number" min="0" step="1" value="0"></label>
+<label>Target jumlah<input name="goal" type="number" min="0" step="1" value="0"></label>
+<div class="form-actions"><button class="btn primary" type="submit">Simpan event</button><button class="btn" type="button" data-cancel="eventForm">Batal</button></div>
+</form>
+<div id="eventList" class="list"></div>
+</section>
+
+<section class="panel" id="backup">
+<div class="card"><h3>Backup & pemulihan</h3><p class="muted small">Ekspor seluruh data project ke file JSON. Simpan file backup di tempat aman. Impor akan mengganti data lokal saat ini.</p><div class="toolbar"><button class="btn primary" id="exportBtn">Ekspor backup</button><label class="btn" for="importFile">Impor backup</label><input class="hidden" id="importFile" type="file" accept="application/json,.json"></div><div class="notice" id="notice" role="status" aria-live="polite"></div></div>
+<div class="card" style="margin-top:12px"><h3>Informasi penyimpanan</h3><p class="muted small">Database menggunakan IndexedDB di browser ini. Menghapus data situs/browser dapat menghapus data aplikasi. Backup berkala sangat disarankan. Jangan simpan password atau token akun game di aplikasi ini.</p></div>
+</section>
+</main>
+<footer>Universal Game Manager · Prototipe lokal · Tidak terhubung ke Google Gemini AI, server, atau akun game.</footer>
+<script src="app.js"></script>
+</body></html>
