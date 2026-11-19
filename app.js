@@ -37,20 +37,21 @@ function validMarketReport(x){
 function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
- if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan market. Tempel JSON dari Pantau Harian Market SFL untuk mulai.</div>';return}
- root.innerHTML=reports.slice(0,20).map((r,i)=>{
-  const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"});
-  const actualBalance=r.walletBalance;
-  const estimatedBalance=actualBalance==null?r.confirmedReceipts:null;
-  const effectiveBalance=actualBalance==null?estimatedBalance:actualBalance;
-  const wallet=effectiveBalance==null?"Belum tersedia":Number(effectiveBalance).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
-  const balanceLabel=actualBalance==null?"Saldo awal estimasi dari penerimaan":"Saldo wallet aktual";
-  const receipts=r.confirmedReceipts==null?"Belum tersedia":Number(r.confirmedReceipts).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
-  const target=Number(r.target||410);
-  const pct=effectiveBalance==null||!target?null:Math.min(100,Math.round(effectiveBalance/target*100));
-  const progress=pct==null?"Progres belum dapat dihitung":pct+"% dari target "+target+" FLOWER";
-  const prices=(r.marketPrices||[]).slice(0,5).map(p=>esc(p.item||"Item")+": Last Sale "+(p.lastSale==null?"—":p.lastSale)+" · Floor "+(p.floor==null?"—":p.floor)).join("<br>");
-  return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>Market SFL · '+date+'</b><span class="recurring-badge">Laporan '+(reports.length-i)+'</span></div><div class="recurring-next"><span>'+balanceLabel+'</span><strong>'+wallet+'</strong><small>'+progress+'</small></div><p class="data-note">Total penerimaan bersih terkonfirmasi: '+receipts+'</p>'+(actualBalance==null?'<p class="data-note">Ini estimasi awal, bukan saldo wallet terverifikasi. Saldo aktual akan menggantikan estimasi saat tersedia.</p>':'')+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':'')+(prices?'<p class="data-note">'+prices+'</p>':'')+'</div><div class="item-actions"><button class="btn danger" data-market-remove="'+esc(r.id)+'">Hapus</button></div></article>'
+ if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan harga. Impor laporan Pantau Harian Market SFL untuk mulai membandingkan harga.</div>';return}
+ const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:4});
+ const r0=reports[0],actual=r0.walletBalance!=null,balance=actual?r0.walletBalance:r0.confirmedReceipts,target=Number(r0.target||410),remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
+ const targetHtml='<div class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi awal")+'</span></div><div class="recurring-next"><span>'+(actual?"Saldo wallet":"Penerimaan bersih tercatat")+'</span><strong>'+fmt(balance)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Kurang "+fmt(remaining)+" FLOWER lagi")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.6320 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</div>';
+ root.innerHTML=targetHtml+reports.slice(0,20).map((r,i)=>{
+  const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}),older=reports.slice(i+1);
+  const prices=(r.marketPrices||[]).map(p=>{
+   const previous=older.flatMap(x=>x.marketPrices||[]).find(x=>String(x.item||"").toLowerCase()===String(p.item||"").toLowerCase()&&x.lastSale!=null);
+   let trend=p.trend||"unknown";
+   if(previous&&p.lastSale!=null){const now=Number(p.lastSale),before=Number(previous.lastSale);if(Number.isFinite(now)&&Number.isFinite(before))trend=now>before?"up":now<before?"down":"stable"}
+   const trendLabel=trend==="up"?"↗ Naik":trend==="down"?"↘ Turun":trend==="stable"?"→ Stabil":"Belum cukup data";
+   const recommendation=p.recommendation||(trend==="up"?"Layak dipertimbangkan untuk dijual":trend==="down"?"Tahan dulu":"Data belum cukup");
+   return '<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item||"Item")+'</b><span class="recurring-badge">'+trendLabel+'</span></div><div class="market-price-grid"><span>Last Sale<strong>'+fmt(p.lastSale)+'</strong></span><span>Floor<strong>'+fmt(p.floor)+'</strong></span><span>Listing<strong>'+fmt(p.currentListing)+'</strong></span></div><p class="data-note"><b>'+esc(recommendation)+'</b></p><p class="data-note">'+(p.source?"Sumber: "+esc(p.source):"Sumber tidak dicantumkan")+(p.observedAt?" · "+esc(p.observedAt):"")+'</p></div></article>';
+  }).join("");
+  return '<details class="event-items market-report" '+(i===0?"open":"")+'><summary><b>Pantauan '+date+'</b><span class="inventory-count">'+(r.marketPrices||[]).length+' item</span></summary><div class="event-items-scroll"><div class="list">'+(prices||'<div class="empty">Belum ada data harga pada laporan ini.</div>')+'</div>'+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':"")+'</div></details>';
  }).join("");
 }
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
