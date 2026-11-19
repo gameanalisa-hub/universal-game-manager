@@ -30,11 +30,11 @@ function preprocess(file,mode){return new Promise((resolve,reject)=>{const img=n
 function scoreText(s){const words=(s.match(/[A-Za-z]{2,}/g)||[]).length,digits=(s.match(/\d+/g)||[]).length,noise=(s.match(/[|{}\[\]~=^]/g)||[]).length;return words*2+digits*3-noise*1.5+s.length*.01}
 function parseCandidates(text){const lines=text.split(/\n+/).map(x=>x.replace(/[|{}[\]~=_]+/g," ").replace(/\s+/g," ").trim()).filter(Boolean),out=[],seen=new Set();for(const line of lines){const m=line.match(/^(.{2,55}?)\s+([0-9][0-9,.]*)\s*$/);if(!m)continue;let name=m[1].replace(/^[^A-Za-z]+/,"").replace(/[^A-Za-z0-9 '&().-]/g,"").trim(),qty=Number(m[2].replace(/[,.](?=\d{3}\b)/g,"").replace(/[,.]/g,""));if(name.length<2||!Number.isFinite(qty)||qty<0)continue;const key=name.toLowerCase()+"|"+qty;if(seen.has(key))continue;seen.add(key);out.push({name,quantity:qty,category:/seed/i.test(name)?"Seeds":/hat|shirt|pants|wear/i.test(name)?"Wearables":/corn|turkey|thanksgiving/i.test(name)?"Event Items":"Blocks"})}return out.slice(0,100)}
 function parseAiInventory(text){
- const out=[],seen=new Set(),lines=text.split(/\\r?\\n/);
- const clean=s=>String(s||"").replace(/^\\*+|\\*+$/g,"").replace(/^["'“”]+|["'“”]+$/g,"").trim();
+ const out=[],seen=new Set(),lines=text.split(/\r?\n/);
+ const clean=s=>String(s||"").replace(/^\*+|\*+$/g,"").replace(/^["'“”]+|["'“”]+$/g,"").trim();
  const add=(name,qty)=>{
-  name=clean(name).replace(/^\\*+|\\*+$/g,"").trim();
-  qty=String(qty||"").replace(/[,.](?=\\d{3}\\b)/g,"").replace(/[^0-9]/g,"");
+  name=clean(name).replace(/^\*+|\*+$/g,"").trim();
+  qty=String(qty||"").replace(/[,.](?=\d{3}\b)/g,"").replace(/[^0-9]/g,"");
   const n=Number(qty);
   if(!name||name.length<2||!Number.isInteger(n)||n<0||n>999)return;
   if(/^(slot|item|jumlah|quantity|name|nama|posisi|player|inventory|hotbar|baris|blocks?|seeds?)$/i.test(name))return;
@@ -46,18 +46,18 @@ function parseAiInventory(text){
  };
  for(const raw of lines){
   let line=raw.trim();if(!line)continue;
-  if(/^\\|?\\s*:?-{2,}/.test(line))continue;
-  if(/^(player|posisi|yang paling penting|hotbar atas|inventory|baris [0-9]|slot\\s+item)/i.test(line.replace(/^#+\\s*/,"")))continue;
+  if(/^\|?\s*:?-{2,}/.test(line))continue;
+  if(/^(player|posisi|yang paling penting|hotbar atas|inventory|baris [0-9]|slot\s+item)/i.test(line.replace(/^#+\s*/,"")))continue;
   if(line.includes("|")){
    const p=line.split("|").map(x=>clean(x));
    if(p.length>=3){
     const first=p[0].replace(/[^0-9]/g,""),last=p[p.length-1].replace(/[^0-9]/g,"");
-    if(first&&last){add(p.slice(1,-1).join(" ").replace(/^\\*|\\*$/g,""),last);continue}
+    if(first&&last){add(p.slice(1,-1).join(" ").replace(/^\*|\*$/g,""),last);continue}
    }
   }
-  let m=line.match(/^\\s*(?:[-*•]\\s*)?(\\d{1,2})[.)]?\\s+(.+?)\\s+(\\d{1,3})\\s*$/);
+  let m=line.match(/^\s*(?:[-*•]\s*)?(\d{1,2})[.)]?\s+(.+?)\s+(\d{1,3})\s*$/);
   if(m){add(m[2],m[3]);continue}
-  m=line.match(/^\\s*(?:[-*•]\\s*)?(.{2,65}?)\\s*[·—–]\\s*(?:[A-Za-z &]+\\s*[·—–]\\s*)?(\\d{1,3})\\s*(?:·.*)?$/);
+  m=line.match(/^\s*(?:[-*•]\s*)?(.{2,65}?)\s*[·—–]\s*(?:[A-Za-z &]+\s*[·—–]\s*)?(\d{1,3})\s*(?:·.*)?$/);
   if(m){add(m[1],m[2]);continue}
  }
  return out.slice(0,200);
