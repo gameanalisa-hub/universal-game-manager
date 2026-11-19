@@ -26,7 +26,7 @@ function renderAutoEvents(){
  $("autoEventCount").textContent=autoEvents.length+" ditemukan";
  if(!autoEvents.length){root.innerHTML='<div class="empty">Belum ada pengumuman event yang terdeteksi. Data akan diperiksa berkala oleh sinkronisasi otomatis.</div>';return}
  root.innerHTML=autoEvents.map(x=>{
-  const date=x.publishedAt&&Number.isFinite(Date.parse(x.publishedAt))?new Date(x.publishedAt).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"Tanggal tidak tersedia";
+  const date=x.startDate?(new Date(x.startDate+"T00:00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})+(x.endDate?" – "+new Date(x.endDate+"T00:00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"")):(x.dateStatus==="unannounced"?"Belum ada tanggal resmi":x.publishedAt&&Number.isFinite(Date.parse(x.publishedAt))?"Pengumuman: "+new Date(x.publishedAt).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"Tanggal tidak tersedia");
   const added=state.events.some(e=>e.name.toLowerCase()===String(x.title||"").toLowerCase());
   return `<article class="item"><div class="item-main"><b>${esc(x.title)}</b><small>${esc(x.category||"Event")} · ${date}</small><p>${esc(x.summary||"")}</p><a href="${esc(x.url||"https://steamcommunity.com/app/636040/allnews/")}" target="_blank" rel="noopener noreferrer">Lihat pengumuman Steam</a></div><div class="item-actions">${added?'<span class="small muted">Sudah ditambahkan</span>':`<button class="btn primary" data-add-auto="${esc(x.id)}">Tambahkan</button>`}</div></article>`;
  }).join("");
