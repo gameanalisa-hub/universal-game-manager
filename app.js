@@ -1,9 +1,8 @@
 (() => {
 "use strict";
-const DB="ugm_pw_module", VERSION=1, STORE="state";
-const $=id=>document.getElementById(id);
+const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
-let state=blank(), scanCandidates=[];
+let state=blank(),scanCandidates=[];
 const notice=msg=>{$("notice").textContent=msg};
 function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 async function load(){const db=await dbOpen();state=await new Promise((res,rej)=>{const t=db.transaction(STORE,"readonly"),r=t.objectStore(STORE).get("data");r.onsuccess=()=>res(r.result||blank());r.onerror=()=>rej(r.error)});db.close();if(!valid(state))state=blank();render()}
@@ -21,77 +20,19 @@ $("worldForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.curr
 $("eventForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);state.events.push({id:id(),name:f.get("name").trim(),target:f.get("target").trim(),current:Number(f.get("current")),goal:Number(f.get("goal"))});hideForm("eventForm");await save()};
 function remove(kind,key){const entry=state[kind].find(x=>x.id===key);if(!entry||!confirm(`Hapus "${entry.name}"?`))return;state[kind]=state[kind].filter(x=>x.id!==key);save()}
 function renderList(kind,container,detail){const root=$(container);if(!state[kind].length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=state[kind].map(x=>`<article class="item"><div class="item-main"><b>${esc(x.name)}</b><small>${detail(x)}</small></div><div class="item-actions"><button class="btn danger" data-remove="${kind}" data-id="${esc(x.id)}" aria-label="Hapus ${esc(x.name)}">Hapus</button></div></article>`).join("")}
-function render(){
-$("statItems").textContent=state.inventory.length;$("statWorlds").textContent=state.worlds.length;$("statEvents").textContent=state.events.length;
-renderList("inventory","inventoryList",x=>`${esc(x.category)} · ${x.quantity.toLocaleString("id-ID")} · ${esc(x.notes||"Tanpa catatan")}`);
-renderList("worlds","worldList",x=>`${esc(x.block||"Belum ada blok")} · ${x.quantity.toLocaleString("id-ID")} terpasang · ${esc(x.notes||"Tanpa catatan")}`);
-renderList("events","eventList",x=>{const pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;return `${esc(x.target||"Tanpa target")} · ${x.current}/${x.goal} <div class="progress"><span style="width:${pct}%"></span></div>`});
-const recent=[...state.inventory.slice(-2).map(x=>`Inventory: ${esc(x.name)}`),...state.worlds.slice(-2).map(x=>`World: ${esc(x.name)}`),...state.events.slice(-2).map(x=>`Event: ${esc(x.name)}`)];
-$("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small muted">${x}</div>`).join(""):'<div class="small muted">Belum ada data tersimpan.</div>';
-}
+function render(){$("statItems").textContent=state.inventory.length;$("statWorlds").textContent=state.worlds.length;$("statEvents").textContent=state.events.length;renderList("inventory","inventoryList",x=>`${esc(x.category)} · ${x.quantity.toLocaleString("id-ID")} · ${esc(x.notes||"Tanpa catatan")}`);renderList("worlds","worldList",x=>`${esc(x.block||"Belum ada blok")} · ${x.quantity.toLocaleString("id-ID")} terpasang · ${esc(x.notes||"Tanpa catatan")}`);renderList("events","eventList",x=>{const pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;return `${esc(x.target||"Tanpa target")} · ${x.current}/${x.goal} <div class="progress"><span style="width:${pct}%"></span></div>`});const recent=[...state.inventory.slice(-2).map(x=>`Inventory: ${esc(x.name)}`),...state.worlds.slice(-2).map(x=>`World: ${esc(x.name)}`),...state.events.slice(-2).map(x=>`Event: ${esc(x.name)}`)];$("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small muted">${x}</div>`).join(""):'<div class="small muted">Belum ada data tersimpan.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b)remove(b.dataset.remove,b.dataset.id)});
 $("exportBtn").onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ugm-pixel-worlds-backup.json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);notice("Backup berhasil dibuat. Simpan file di tempat aman.")};
 $("importFile").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>5*1024*1024)throw 0;const parsed=JSON.parse(await file.text());if(!valid(parsed))throw 0;if(!confirm("Impor akan mengganti semua data Pixel Worlds di browser ini. Lanjutkan?"))return;state=parsed;await save();notice("Backup berhasil dipulihkan.")}catch{notice("File tidak valid atau gagal dibaca. Data lama tidak diubah.")}finally{e.target.value=""}};
 
-// OCR: the selected image is processed in this browser. Only user-approved rows are saved.
-$("scanFile").onchange=async e=>{
- const file=e.target.files?.[0];if(!file)return;
- $("scanReview").classList.add("hidden");$("scanStatus").textContent="Menyiapkan OCR…";
- try{
-  if(!file.type.startsWith("image/"))throw new Error("File harus berupa gambar.");
-  if(file.size>12*1024*1024)throw new Error("Ukuran gambar maksimal 12 MB.");
-  if(!window.Tesseract)throw new Error("Library OCR belum termuat. Periksa koneksi internet lalu muat ulang UGM.");
-  const worker=await Tesseract.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text")$("scanStatus").textContent=`Membaca screenshot… ${Math.round((m.progress||0)*100)}%`;}});
-  let result;
-  try{result=await worker.recognize(file)}finally{await worker.terminate()}
-  const raw=result.data.text||"";
-  $("rawOcr").value=raw;
-  scanCandidates=raw.split(/\r?\n/).map(line=>{
-    const clean=line.replace(/[|]/g," ").replace(/\s+/g," ").trim();
-    const match=clean.match(/^(.{2,70}?)\s+([\d,]{1,12})$/);
-    if(!match)return null;
-    const name=match[1].replace(/^[^A-Za-z]+/,"").trim();
-    const quantity=Number(match[2].replace(/,/g,""));
-    if(!name||!Number.isSafeInteger(quantity)||quantity<0)return null;
-    return {name,quantity,category:"Other",selected:true};
-  }).filter(Boolean);
-  if(!scanCandidates.length){
-   $("scanStatus").textContent="Teks berhasil dibaca, tetapi nama dan jumlah item belum bisa dipisahkan otomatis. Lihat teks OCR mentah; tahap ini belum mengubah Inventory.";
-   $("scanReview").classList.remove("hidden");
-   $("scanRows").innerHTML='<p class="muted small">Tidak ada baris yang cocok otomatis. Coba screenshot yang lebih jelas atau gunakan Tambah item.</p>';
-   $("saveScanBtn").disabled=true;
-   return;
-  }
-  renderScanRows();$("scanReview").classList.remove("hidden");$("saveScanBtn").disabled=false;
-  $("scanStatus").textContent=`Selesai membaca. Ditemukan ${scanCandidates.length} kandidat item. Periksa sebelum menyimpan.`;
- }catch(err){$("scanStatus").textContent=err.message||"OCR gagal dijalankan."}
-};
-function renderScanRows(){
- $("scanRows").innerHTML=scanCandidates.map((x,i)=>`<div class="scan-row">
- <label><input type="checkbox" data-scan-check="${i}" ${x.selected?"checked":""}> Pilih · Nama item<input data-scan-name="${i}" maxlength="70" value="${esc(x.name)}"></label>
- <label>Jumlah<input data-scan-qty="${i}" type="number" min="0" step="1" value="${x.quantity}"></label>
- <label>Kategori<select data-scan-cat="${i}">${["Blocks","Seeds","Event Items","Wearables","Currency","Other"].map(c=>`<option ${c===x.category?"selected":""}>${c}</option>`).join("")}</select></label>
- </div>`).join("");
-}
-$("scanRows").addEventListener("input",e=>{
- const n=e.target;
- for(const [attr,key] of [["data-scan-name","name"],["data-scan-qty","quantity"],["data-scan-cat","category"]]){
-  if(n.hasAttribute(attr)){const i=Number(n.getAttribute(attr));scanCandidates[i][key]=key==="quantity"?Number(n.value):n.value;break;}
- }
-});
-$("scanRows").addEventListener("change",e=>{const n=e.target;if(n.hasAttribute("data-scan-check"))scanCandidates[Number(n.getAttribute("data-scan-check"))].selected=n.checked});
-$("saveScanBtn").onclick=async()=>{
- const chosen=scanCandidates.filter(x=>x.selected&&x.name.trim()&&Number.isSafeInteger(x.quantity)&&x.quantity>=0);
- if(!chosen.length){$("scanStatus").textContent="Tidak ada item valid yang dipilih.";return}
- for(const x of chosen){
-  const existing=state.inventory.find(y=>y.name.trim().toLowerCase()===x.name.trim().toLowerCase()&&y.category===x.category);
-  if(existing){existing.quantity=x.quantity;existing.notes="Diperbarui dari Scan Inventory";}
-  else state.inventory.push({id:id(),name:x.name.trim(),category:x.category,quantity:x.quantity,notes:"Dari Scan Inventory"});
- }
- await save();$("scanStatus").textContent=`Berhasil menyimpan ${chosen.length} item. Item yang cocok diperbarui; item baru ditambahkan.`;
- $("scanReview").classList.add("hidden");$("scanFile").value="";scanCandidates=[];
-};
-$("clearScanBtn").onclick=()=>{scanCandidates=[];$("scanFile").value="";$("scanReview").classList.add("hidden");$("scanStatus").textContent="Hasil scan dibatalkan. Inventory tidak berubah."};
+// OCR: preprocess image at multiple scales/thresholds, then compare Tesseract PSM results.
+function preprocess(file,mode){return new Promise((resolve,reject)=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{try{const maxW=2400,scale=Math.min(3,Math.max(1.8,maxW/img.width));const c=document.createElement("canvas");c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);const ctx=c.getContext("2d",{willReadFrequently:true});ctx.drawImage(img,0,0,c.width,c.height);const im=ctx.getImageData(0,0,c.width,c.height),d=im.data;for(let i=0;i<d.length;i+=4){let g=(d[i]*.299+d[i+1]*.587+d[i+2]*.114);if(mode===1)g=g<145?0:255;else if(mode===2)g=Math.max(0,Math.min(255,(g-128)*1.65+128));d[i]=d[i+1]=d[i+2]=g;}ctx.putImageData(im,0,0);c.toBlob(b=>{URL.revokeObjectURL(url);b?resolve(b):reject(Error("Gagal memproses gambar"))},"image/png")}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error("Gambar tidak dapat dibuka"))};img.src=url})}
+function scoreText(s){const words=(s.match(/[A-Za-z]{2,}/g)||[]).length,digits=(s.match(/\d+/g)||[]).length,noise=(s.match(/[|{}\[\]~=^]/g)||[]).length;return words*2+digits*3-noise*1.5+s.length*.01}
+function parseCandidates(text){const lines=text.split(/\n+/).map(x=>x.replace(/[|{}[\]~=_]+/g," ").replace(/\s+/g," ").trim()).filter(Boolean),out=[],seen=new Set();for(const line of lines){const m=line.match(/^(.{2,55}?)\s+([0-9][0-9,.]*)\s*$/);if(!m)continue;let name=m[1].replace(/^[^A-Za-z]+/,"").replace(/[^A-Za-z0-9 '&().-]/g,"").trim(),qty=Number(m[2].replace(/[,.](?=\d{3}\b)/g,"").replace(/[,.]/g,""));if(name.length<2||!Number.isFinite(qty)||qty<0)continue;const key=name.toLowerCase()+"|"+qty;if(seen.has(key))continue;seen.add(key);out.push({name,quantity:qty,category:/seed/i.test(name)?"Seeds":/hat|shirt|pants|wear/i.test(name)?"Wearables":/corn|turkey|thanksgiving/i.test(name)?"Event Items":"Blocks"})}return out.slice(0,100)}
+function showCandidates(candidates){scanCandidates=candidates;$("scanRows").innerHTML=candidates.length?candidates.map((x,i)=>`<div class="scan-row"><input type="checkbox" data-sel="${i}" checked aria-label="Pilih ${esc(x.name)}"><input data-name="${i}" value="${esc(x.name)}" aria-label="Nama item"><input data-qty="${i}" type="number" min="0" step="1" value="${x.quantity}" aria-label="Jumlah"><select data-cat="${i}" aria-label="Kategori">${["Blocks","Seeds","Event Items","Wearables","Currency","Other"].map(c=>`<option ${c===x.category?"selected":""}>${c}</option>`).join("")}</select></div>`).join(""):'<div class="empty">Belum ada baris nama item + jumlah yang cocok. Periksa teks mentah; jangan simpan jika hasilnya keliru.</div>';$("scanResults").classList.remove("hidden")}
+$("scanBtn").onclick=async()=>{const file=$("scanFile").files?.[0];if(!file){$("scanStatus").textContent="Pilih screenshot terlebih dahulu.";return}if(!window.Tesseract){$("scanStatus").textContent="Library OCR belum termuat. Periksa koneksi internet lalu muat ulang halaman.";return}const btn=$("scanBtn");btn.disabled=true;$("scanStatus").textContent="Memproses gambar dan mencoba beberapa pengaturan OCR…";$("scanResults").classList.add("hidden");try{const worker=await Tesseract.createWorker("eng",1,{logger:m=>{if(m.status==="recognizing text")$("scanStatus").textContent=`Membaca teks… ${Math.round((m.progress||0)*100)}%`}});let best="",bestScore=-Infinity;for(let mode=0;mode<3;mode++){const blob=await preprocess(file,mode);for(const psm of [6,11]){await worker.setParameters({tessedit_pageseg_mode:psm,preserve_interword_spaces:"1"});const r=await worker.recognize(blob);const t=r.data.text||"",s=scoreText(t);if(s>bestScore){best=t;bestScore=s}}}await worker.terminate();$("rawOcr").value=best;const candidates=parseCandidates(best);showCandidates(candidates);$("scanStatus").textContent=candidates.length?`OCR selesai. Ditemukan ${candidates.length} kandidat; periksa semuanya sebelum menyimpan.`:"OCR selesai, tetapi belum menemukan pasangan nama item dan jumlah yang cukup jelas. Tidak ada data Inventory yang diubah."}catch(e){$("scanStatus").textContent="OCR gagal: "+(e.message||"periksa koneksi internet dan coba lagi.")}finally{btn.disabled=false}};
+$("cancelScanBtn").onclick=()=>{$("scanResults").classList.add("hidden");$("rawOcr").value="";$("scanRows").innerHTML="";scanCandidates=[];$("scanStatus").textContent="Hasil scan dibatalkan. Inventory tidak berubah."};
+$("saveScanBtn").onclick=async()=>{let count=0;for(let i=0;i<scanCandidates.length;i++){if(!$(`scanRows`).querySelector(`[data-sel="${i}"]`)?.checked)continue;const name=$(`scanRows`).querySelector(`[data-name="${i}"]`).value.trim(),quantity=Number($(`scanRows`).querySelector(`[data-qty="${i}"]`).value),category=$(`scanRows`).querySelector(`[data-cat="${i}"]`).value;if(!name||!Number.isInteger(quantity)||quantity<0)continue;const existing=state.inventory.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.category===category);if(existing)existing.quantity=quantity;else state.inventory.push({id:id(),name,category,quantity,notes:"Diimpor dari OCR; periksa hasil scan"});count++}if(count){await save();$("scanStatus").textContent=`${count} item disimpan. Item dengan nama dan kategori sama diperbarui, bukan digandakan.`}else $("scanStatus").textContent="Tidak ada item yang dipilih atau datanya tidak valid.";$("scanResults").classList.add("hidden")};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 load().catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 })();
