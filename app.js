@@ -40,12 +40,17 @@ function renderMarketReports(){
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan market. Tempel JSON dari Pantau Harian Market SFL untuk mulai.</div>';return}
  root.innerHTML=reports.slice(0,20).map((r,i)=>{
   const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"});
-  const wallet=r.walletBalance==null?"Saldo belum tersedia":Number(r.walletBalance).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
-  const target=Number(r.target||410),balance=r.walletBalance;
-  const pct=balance==null||!target?null:Math.min(100,Math.round(balance/target*100));
+  const actualBalance=r.walletBalance;
+  const estimatedBalance=actualBalance==null?r.confirmedReceipts:null;
+  const effectiveBalance=actualBalance==null?estimatedBalance:actualBalance;
+  const wallet=effectiveBalance==null?"Belum tersedia":Number(effectiveBalance).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
+  const balanceLabel=actualBalance==null?"Saldo awal estimasi dari penerimaan":"Saldo wallet aktual";
+  const receipts=r.confirmedReceipts==null?"Belum tersedia":Number(r.confirmedReceipts).toLocaleString("id-ID",{maximumFractionDigits:4})+" FLOWER";
+  const target=Number(r.target||410);
+  const pct=effectiveBalance==null||!target?null:Math.min(100,Math.round(effectiveBalance/target*100));
   const progress=pct==null?"Progres belum dapat dihitung":pct+"% dari target "+target+" FLOWER";
   const prices=(r.marketPrices||[]).slice(0,5).map(p=>esc(p.item||"Item")+": Last Sale "+(p.lastSale==null?"—":p.lastSale)+" · Floor "+(p.floor==null?"—":p.floor)).join("<br>");
-  return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>Market SFL · '+date+'</b><span class="recurring-badge">Laporan '+(reports.length-i)+'</span></div><div class="recurring-next"><span>Saldo wallet</span><strong>'+wallet+'</strong><small>'+progress+'</small></div>'+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':'')+(prices?'<p class="data-note">'+prices+'</p>':'')+'</div><div class="item-actions"><button class="btn danger" data-market-remove="'+esc(r.id)+'">Hapus</button></div></article>'
+  return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>Market SFL · '+date+'</b><span class="recurring-badge">Laporan '+(reports.length-i)+'</span></div><div class="recurring-next"><span>'+balanceLabel+'</span><strong>'+wallet+'</strong><small>'+progress+'</small></div><p class="data-note">Total penerimaan bersih terkonfirmasi: '+receipts+'</p>'+(actualBalance==null?'<p class="data-note">Ini estimasi awal, bukan saldo wallet terverifikasi. Saldo aktual akan menggantikan estimasi saat tersedia.</p>':'')+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':'')+(prices?'<p class="data-note">'+prices+'</p>':'')+'</div><div class="item-actions"><button class="btn danger" data-market-remove="'+esc(r.id)+'">Hapus</button></div></article>'
  }).join("");
 }
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
