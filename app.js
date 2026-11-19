@@ -18,7 +18,7 @@ function switchGame(game){
  $("pixelMain").classList.toggle("hidden",!pixel);$("sunflowerMain").classList.toggle("hidden",pixel);
  $("gamePixelBtn").classList.toggle("primary",pixel);$("gameSunflowerBtn").classList.toggle("primary",!pixel);
  document.querySelectorAll(".tab[data-tab]").forEach(x=>x.classList.toggle("active",pixel&&x.dataset.tab==="overview"));
- if(!pixel){document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x.dataset.sflTab==="sflOverview"));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id==="sflOverview"));renderSfl()}
+ if(!pixel){document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x.dataset.sflTab==="sflMarket"));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id==="sflMarket"));renderSfl()}
 }
 $("gamePixelBtn").onclick=()=>switchGame("pixel");$("gameSunflowerBtn").onclick=()=>switchGame("sunflower");
 document.querySelectorAll("[data-sfl-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id===b.dataset.sflTab))}));
