@@ -35,7 +35,7 @@ function id(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Ma
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function showForm(id){$(id).classList.remove("hidden");$(id).querySelector("input")?.focus()}
 function hideForm(id){$(id).reset();$(id).classList.add("hidden")}
-document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".panel").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab))}));
+document.querySelectorAll("#pixelMain .tab[data-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("#pixelMain .tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("#pixelMain .panel").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab))}));
 document.querySelectorAll("[data-cancel]").forEach(b=>b.addEventListener("click",()=>hideForm(b.dataset.cancel)));
 $("addItemBtn").onclick=()=>showForm("itemForm");$("addWorldBtn").onclick=()=>showForm("worldForm");
 $("itemForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget),quantity=Number(f.get("quantity"));if(!Number.isInteger(quantity)||quantity<0||quantity>999){notice("Jumlah Inventory harus 0–999 per stack.");return}state.inventory.push({id:id(),name:f.get("name").trim(),category:f.get("category"),quantity,notes:f.get("notes").trim()});hideForm("itemForm");await save()};
