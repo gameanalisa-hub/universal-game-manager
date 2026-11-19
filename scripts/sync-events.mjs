@@ -51,7 +51,8 @@ try {
   const previous = JSON.parse(await fs.readFile("events-feed.json", "utf8"));
   if (previous.game === "pixel-worlds" && Array.isArray(previous.items)) previousItems = previous.items;
 } catch {}
-const retained = previousItems.filter(item => item && (item.dateStatus === "recurring-schedule-announced" || item.dateStatus === "unannounced"));
+const retained = previousItems.filter(item => item && (item.dateStatus === "recurring-schedule-announced" || item.dateStatus === "unannounced"))
+  .filter(item => item.recurrence?.frequency !== "monthly" || item.id === "pw-secret-base-monthly");
 const merged = [...detected, ...retained.filter(item => !detected.some(found => found.id === item.id))].slice(0, 60);
 const feed = {
   game: "pixel-worlds",
