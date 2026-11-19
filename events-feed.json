@@ -6,7 +6,7 @@
   "coverage": {
     "from": "2026-11-19",
     "through": "2027-11-30",
-    "note": "Only publicly announced dates and explicitly stated recurring schedules are listed. Undated future events are not guessed."
+    "note": "Only publicly announced dates and explicitly stated recurring schedules are listed. Recurring schedules are grouped into one entry; undated future events are not guessed."
   },
   "items": [
     {
@@ -45,133 +45,18 @@
       "source": "Steam · Halloween update 2.1.24"
     },
     {
-      "id": "pw-secret-base-2026-12-03",
-      "title": "Secret Base (jadwal rutin)",
+      "id": "pw-secret-base-monthly",
+      "title": "Secret Base",
       "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
+      "summary": "Secret Base dijadwalkan kembali setiap Kamis pertama setiap bulan, berdasarkan pengumuman resmi 31 Agustus 2026. Jadwal berikutnya mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
       "startDate": "2026-12-03",
       "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-01-07",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-01-07",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-02-04",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-02-04",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-03-04",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-03-04",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-04-01",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-04-01",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-05-06",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-05-06",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-06-03",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-06-03",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-07-01",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-07-01",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-08-05",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-08-05",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-09-02",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-09-02",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-10-07",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-10-07",
-      "dateStatus": "recurring-schedule-announced",
-      "publishedAt": "2026-08-31T00:00:00.000Z",
-      "url": "https://steamcommunity.com/app/636040/announcements/",
-      "source": "Steam · Secret Base is back!"
-    },
-    {
-      "id": "pw-secret-base-2027-11-04",
-      "title": "Secret Base (jadwal rutin)",
-      "category": "Recurring Event",
-      "summary": "Secret Base dijadwalkan kembali pada Kamis pertama setiap bulan, sesuai pengumuman resmi 31 Agustus 2026. Tanggal ini mengikuti pola rutin yang diumumkan; konfirmasi dalam game tetap disarankan.",
-      "startDate": "2027-11-04",
-      "dateStatus": "recurring-schedule-announced",
+      "recurrence": {
+        "frequency": "monthly",
+        "occurrence": "first",
+        "weekday": "Thursday",
+        "weekdayNumber": 4
+      },
       "publishedAt": "2026-08-31T00:00:00.000Z",
       "url": "https://steamcommunity.com/app/636040/announcements/",
       "source": "Steam · Secret Base is back!"
