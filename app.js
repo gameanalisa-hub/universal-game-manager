@@ -38,22 +38,26 @@ function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada laporan harga. Impor laporan Pantau Harian Market SFL untuk mulai membandingkan harga.</div>';return}
- const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:4});
+ const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const r0=reports[0],actual=r0.walletBalance!=null,balance=actual?r0.walletBalance:r0.confirmedReceipts,target=Number(r0.target||410),remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
  const targetHtml='<div class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi awal")+'</span></div><div class="recurring-next"><span>'+(actual?"Saldo wallet":"Penerimaan bersih tercatat")+'</span><strong>'+fmt(balance)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Kurang "+fmt(remaining)+" FLOWER lagi")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.6320 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</div>';
  root.innerHTML=targetHtml+reports.slice(0,20).map((r,i)=>{
   const date=new Date(r.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}),older=reports.slice(i+1);
   const prices=(r.marketPrices||[]).map(p=>{
-   const previous=older.flatMap(x=>x.marketPrices||[]).find(x=>String(x.item||"").toLowerCase()===String(p.item||"").toLowerCase()&&x.lastSale!=null);
+   const metricKey=p.p2pPrice!=null?"p2pPrice":"lastSale";
+   const previous=older.flatMap(x=>x.marketPrices||[]).find(x=>String(x.item||"").toLowerCase()===String(p.item||"").toLowerCase()&&x[metricKey]!=null);
    let trend=p.trend||"unknown";
-   if(previous&&p.lastSale!=null){const now=Number(p.lastSale),before=Number(previous.lastSale);if(Number.isFinite(now)&&Number.isFinite(before))trend=now>before?"up":now<before?"down":"stable"}
+   if(previous&&p[metricKey]!=null){const now=Number(p[metricKey]),before=Number(previous[metricKey]);if(Number.isFinite(now)&&Number.isFinite(before))trend=now>before?"up":now<before?"down":"stable"}
    const trendLabel=trend==="up"?"↗ Naik":trend==="down"?"↘ Turun":trend==="stable"?"→ Stabil":"Belum cukup data";
    const recommendation=p.recommendation||(trend==="up"?"Layak dipertimbangkan untuk dijual":trend==="down"?"Tahan dulu":"Data belum cukup");
-   return '<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item||"Item")+'</b><span class="recurring-badge">'+trendLabel+'</span></div><div class="market-price-grid"><span>Last Sale<strong>'+fmt(p.lastSale)+'</strong></span><span>Floor<strong>'+fmt(p.floor)+'</strong></span><span>Listing<strong>'+fmt(p.currentListing)+'</strong></span></div><p class="data-note"><b>'+esc(recommendation)+'</b></p><p class="data-note">'+(p.source?"Sumber: "+esc(p.source):"Sumber tidak dicantumkan")+(p.observedAt?" · "+esc(p.observedAt):"")+'</p></div></article>';
+   const priceCells=p.p2pPrice!=null?'<span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span>':'<span>Last Sale<strong>'+fmt(p.lastSale)+'</strong></span>';
+   const extraCells=(p.floor!=null?'<span>Floor<strong>'+fmt(p.floor)+'</strong></span>':"")+(p.currentListing!=null?'<span>Listing<strong>'+fmt(p.currentListing)+'</strong></span>':"");
+   return '<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item||"Item")+'</b><span class="recurring-badge">'+trendLabel+'</span></div><div class="market-price-grid">'+priceCells+extraCells+'</div><p class="data-note"><b>'+esc(recommendation)+'</b></p><p class="data-note">'+(p.source?"Sumber: "+esc(p.source):"Sumber tidak dicantumkan")+(p.observedAt?" · "+esc(p.observedAt):"")+'</p></div></article>';
   }).join("");
   return '<details class="event-items market-report" '+(i===0?"open":"")+'><summary><b>Pantauan '+date+'</b><span class="inventory-count">'+(r.marketPrices||[]).length+' item</span></summary><div class="event-items-scroll"><div class="list">'+(prices||'<div class="empty">Belum ada data harga pada laporan ini.</div>')+'</div>'+(r.summary?'<p class="data-note">'+esc(r.summary)+'</p>':"")+'</div></details>';
  }).join("");
 }
+$("sflFetchMarketBtn").onclick=()=>loadSflMarketFeed();
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
 $("sflImportMarketBtn").onclick=async()=>{
  const status=$("sflMarketStatus"),raw=$("sflMarketJson").value.trim();
@@ -81,6 +85,48 @@ document.addEventListener("click",async e=>{
  sflState.marketReports=sflState.marketReports.filter(x=>x.id!==item.id);await saveSfl();$("sflMarketStatus").textContent="Laporan dihapus.";
 });
 
+async function loadSflMarketFeed(options={}){
+ const status=$("sflMarketStatus"),button=$("sflFetchMarketBtn");
+ if(button)button.disabled=true;
+ if(status&&!options.silent)status.textContent="Mengambil feed harga P2P SFL.world…";
+ try{
+  const response=await fetch("./market-feed.json?ts="+Date.now(),{cache:"no-store"});
+  if(!response.ok)throw new Error("HTTP "+response.status);
+  const feed=await response.json();
+  if(feed.type!=="sfl-market-feed"||feed.schemaVersion!==1||!Array.isArray(feed.history))throw new Error("Format feed market tidak valid");
+  const snapshots=feed.history.filter(x=>x&&typeof x.date==="string"&&x.prices&&typeof x.prices==="object");
+  if(!snapshots.length)throw new Error("Belum ada snapshot harga pada feed");
+  sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
+  let added=0;
+  for(const snapshot of snapshots){
+   const marketPrices=Object.entries(snapshot.prices).filter(([item,value])=>item&&Number.isFinite(Number(value))&&Number(value)>=0).map(([item,value])=>({
+    item,p2pPrice:Number(value),source:"SFL.world P2P",observedAt:snapshot.sourceUpdatedAt||snapshot.observedAt,metric:"p2p"
+   }));
+   if(!marketPrices.length)continue;
+   const report={
+    type:"sfl-market-report",schemaVersion:1,id:"sfl-market-"+snapshot.date,
+    observedAt:snapshot.observedAt||feed.generatedAt,currency:"FLOWER",
+    walletBalance:null,confirmedReceipts:4.632,target:410,
+    marketPrices,transactions:[],
+    summary:"Snapshot harian harga P2P SFL.world · "+marketPrices.length+" item. Harga P2P bukan last sale atau floor.",
+    dataGaps:["Feed ini hanya menyediakan harga P2P; last sale, floor, listing, dan volume tidak tersedia."],
+    sourceUrl:feed.sourceUrl||"https://sfl.world/api/v1/prices",
+    sourceUpdatedAt:snapshot.sourceUpdatedAt||null
+   };
+   const index=sflState.marketReports.findIndex(x=>x.id===report.id);
+   if(index>=0)sflState.marketReports[index]=report;else{sflState.marketReports.push(report);added++}
+  }
+  sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
+  sflState.marketReports=sflState.marketReports.slice(-100);
+  await saveSfl();
+  const latest=snapshots[snapshots.length-1];
+  if(status)status.textContent="Feed otomatis aktif · "+snapshots.length+" snapshot harian · "+Object.keys(latest.prices).length+" item · terbaru "+latest.date+".";
+ }catch(error){
+  if(status)status.textContent="Feed otomatis belum dapat dimuat ("+(error.message||"kesalahan jaringan")+"). Impor JSON manual tetap tersedia.";
+ }finally{
+  if(button)button.disabled=false;
+ }
+}
 function renderSfl(){ sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sfl-remove]");if(!b)return;const kind=b.dataset.sflRemove,item=sflState[kind].find(x=>x.id===b.dataset.id);if(!item||!confirm('Hapus "'+item.name+'"?'))return;sflState[kind]=sflState[kind].filter(x=>x.id!==item.id);saveSfl()});
 
@@ -294,6 +340,6 @@ $("scanBtn").onclick=async()=>{const file=$("scanFile").files?.[0];if(!file){$("
 $("cancelScanBtn").onclick=()=>{$("scanResults").classList.add("hidden");$("rawOcr").value="";$("scanRows").innerHTML="";scanCandidates=[];$("scanStatus").textContent="Hasil scan dibatalkan. Inventory tidak berubah."};
 $("saveScanBtn").onclick=async()=>{let count=0,skipped=0;for(let i=0;i<scanCandidates.length;i++){if(!$(`scanRows`).querySelector(`[data-sel="${i}"]`)?.checked)continue;const name=$(`scanRows`).querySelector(`[data-name="${i}"]`).value.trim(),quantity=Number($(`scanRows`).querySelector(`[data-qty="${i}"]`).value),category=$(`scanRows`).querySelector(`[data-cat="${i}"]`).value;if(!name||!Number.isInteger(quantity)||quantity<0||quantity>999){skipped++;continue}const existing=state.inventory.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.category===category);if(existing)existing.quantity=quantity;else state.inventory.push({id:id(),name,category,quantity,notes:"Diimpor dari OCR; periksa hasil scan"});count++}if(count){await save();$("scanStatus").textContent=count+" item disimpan"+(skipped?"; "+skipped+" dilewati karena jumlah harus 0–999":"")+". Item dengan nama dan kategori sama diperbarui, bukan digandakan."}else $("scanStatus").textContent=skipped?skipped+" item dilewati. Jumlah Inventory harus 0–999 per stack.":"Tidak ada item yang dipilih atau datanya tidak valid.";$("scanResults").classList.add("hidden")};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
-load().catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
+load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
 })();
