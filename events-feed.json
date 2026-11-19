@@ -3,5 +3,15 @@
   "source": "Steam Community Announcements",
   "sourceUrl": "https://steamcommunity.com/app/636040/allnews/",
   "generatedAt": null,
-  "items": []
+  "items": [
+    {
+      "id": "seed-steam-update-2-1-70",
+      "title": "Update 2.1.70 — Black Friday & Fishing Tournaments",
+      "category": "Tournament",
+      "summary": "Pengumuman 17 November 2026: Fishing Tournaments kembali mulai 20 November (Baby Cup, Fisherman’s Cup, dan Pro Cup). Penawaran Black Friday dijadwalkan 23–30 November.",
+      "publishedAt": "2026-11-17T00:00:00.000Z",
+      "url": "https://steamcommunity.com/app/636040/allnews/",
+      "source": "Steam · Pixel Worlds"
+    }
+  ]
 }
