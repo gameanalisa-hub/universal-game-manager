@@ -19,7 +19,19 @@ $("itemForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.curre
 $("worldForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);state.worlds.push({id:id(),name:f.get("name").trim(),block:f.get("block").trim(),quantity:Number(f.get("quantity")),notes:f.get("notes").trim()});hideForm("worldForm");await save()};
 $("eventForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);state.events.push({id:id(),name:f.get("name").trim(),target:f.get("target").trim(),current:Number(f.get("current")),goal:Number(f.get("goal"))});hideForm("eventForm");await save()};
 function remove(kind,key){const entry=state[kind].find(x=>x.id===key);if(!entry||!confirm(`Hapus "${entry.name}"?`))return;state[kind]=state[kind].filter(x=>x.id!==key);save()}
-function renderList(kind,container,detail){const root=$(container);if(!state[kind].length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=state[kind].map(x=>`<article class="item"><div class="item-main"><b>${esc(x.name)}</b><small>${detail(x)}</small></div><div class="item-actions"><button class="btn danger" data-remove="${kind}" data-id="${esc(x.id)}" aria-label="Hapus ${esc(x.name)}">Hapus</button></div></article>`).join("")}
+function renderList(kind,container,detail){
+ const root=$(container);
+ if(!state[kind].length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}
+ root.innerHTML=state[kind].map(x=>{
+  const inventory=kind==="inventory";
+  const badge=inventory?esc(x.category||"Item"):"World";
+  const highlight=inventory
+   ?'<div class="recurring-next"><span>Jumlah di Inventory</span><strong>'+Number(x.quantity||0).toLocaleString("id-ID")+'</strong><small>Maksimal 999 per stack</small></div>'
+   :'<div class="recurring-next"><span>Blok / tanaman terpasang</span><strong>'+Number(x.quantity||0).toLocaleString("id-ID")+'</strong><small>'+esc(x.block||"Jenis blok belum ditentukan")+'</small></div>';
+  const note=inventory?esc(x.notes||"Tanpa catatan"):esc(x.notes||"Tanpa catatan");
+  return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">'+badge+'</span></div>'+highlight+'<p class="data-note">'+note+'</p></div><div class="item-actions"><button class="btn danger" data-remove="'+kind+'" data-id="'+esc(x.id)+'" aria-label="Hapus '+esc(x.name)+'">Hapus</button></div></article>';
+ }).join("");
+}
 function renderTrackedEvents(){
  const root=$("eventList");
  if(!state.events.length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}
@@ -29,7 +41,22 @@ function renderTrackedEvents(){
   return '<article class="item recurring-event event-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">Tracker pribadi</span></div><small>'+esc(x.target||"Target belum ditentukan")+'</small><div class="recurring-next"><span>Progres event</span><strong>'+progress+'</strong>'+(x.goal>0?'<div class="progress"><span style="width:'+pct+'%"></span></div>':'')+'</div>'+(x.sourceUrl?'<a href="'+esc(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Lihat sumber pengumuman</a>':'')+'</div><div class="item-actions"><button class="btn danger" data-remove="events" data-id="'+esc(x.id)+'" aria-label="Hapus '+esc(x.name)+'">Hapus</button></div></article>';
  }).join("");
 }
-function render(){$("statItems").textContent=state.inventory.length;$("inventoryCount").textContent=state.inventory.length+" item";$("statWorlds").textContent=state.worlds.length;$("statEvents").textContent=state.events.length;$("eventCount").textContent=state.events.length+" event";renderList("inventory","inventoryList",x=>`${esc(x.category)} · ${x.quantity.toLocaleString("id-ID")} · ${esc(x.notes||"Tanpa catatan")}`);renderList("worlds","worldList",x=>`${esc(x.block||"Belum ada blok")} · ${x.quantity.toLocaleString("id-ID")} terpasang · ${esc(x.notes||"Tanpa catatan")}`);renderTrackedEvents();const recent=[...state.inventory.slice(-2).map(x=>`Inventory: ${esc(x.name)}`),...state.worlds.slice(-2).map(x=>`World: ${esc(x.name)}`),...state.events.slice(-2).map(x=>`Event: ${esc(x.name)}`)];$("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small muted">${x}</div>`).join("") :'<div class="small muted">Belum ada data tersimpan.</div>'}
+function render(){
+ $("statItems").textContent=state.inventory.length;
+ $("inventoryCount").textContent=state.inventory.length+" item";
+ $("statWorlds").textContent=state.worlds.length;
+ $("statEvents").textContent=state.events.length;
+ $("eventCount").textContent=state.events.length+" event";
+ renderList("inventory","inventoryList");
+ renderList("worlds","worldList");
+ renderTrackedEvents();
+ const recent=[
+  ...state.inventory.slice(-2).map(x=>({type:"Inventory",name:x.name,detail:(x.category||"Item")+" · "+Number(x.quantity||0).toLocaleString("id-ID")})),
+  ...state.worlds.slice(-2).map(x=>({type:"World",name:x.name,detail:(x.block||"Blok belum ditentukan")+" · "+Number(x.quantity||0).toLocaleString("id-ID")+" terpasang"})),
+  ...state.events.slice(-2).map(x=>({type:"Event",name:x.name,detail:x.target||"Target belum ditentukan"}))
+ ].slice(-6).reverse();
+ $("overviewRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">'+x.type+'</span></div><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data tersimpan. Tambahkan item, world, atau event untuk mulai mengisi ringkasan.</div>';
+}
 function formatEventDate(value){
  const [year,month,day]=value.split("-").map(Number);
  return new Date(year,month-1,day,12).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"});
