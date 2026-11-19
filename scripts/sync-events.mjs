@@ -45,12 +45,20 @@ const detected = items
   .filter(Boolean)
   .slice(0, 30);
 
+const fs = await import("node:fs/promises");
+let previousItems = [];
+try {
+  const previous = JSON.parse(await fs.readFile("events-feed.json", "utf8"));
+  if (previous.game === "pixel-worlds" && Array.isArray(previous.items)) previousItems = previous.items;
+} catch {}
+const retained = previousItems.filter(item => item && (item.dateStatus === "recurring-schedule-announced" || item.dateStatus === "unannounced"));
+const merged = [...detected, ...retained.filter(item => !detected.some(found => found.id === item.id))].slice(0, 60);
 const feed = {
   game: "pixel-worlds",
   source: "Steam Community Announcements",
   sourceUrl: "https://steamcommunity.com/app/636040/allnews/",
   generatedAt: new Date().toISOString(),
-  items: detected
+  items: merged
 };
-await import("node:fs/promises").then(fs => fs.writeFile("events-feed.json", JSON.stringify(feed, null, 2) + "\n"));
+await fs.writeFile("events-feed.json", JSON.stringify(feed, null, 2) + "\n");
 console.log(`Saved ${detected.length} event-related announcements.`);
