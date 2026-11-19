@@ -1,5 +1,9 @@
 name: Sync Sunflower Land P2P prices
 on:
+  push:
+    paths:
+      - ".github/workflows/sync-sfl-market.yml"
+      - "scripts/sync-sfl-market.mjs"
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
