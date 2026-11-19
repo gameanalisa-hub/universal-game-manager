@@ -21,14 +21,42 @@ $("eventForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.curr
 function remove(kind,key){const entry=state[kind].find(x=>x.id===key);if(!entry||!confirm(`Hapus "${entry.name}"?`))return;state[kind]=state[kind].filter(x=>x.id!==key);save()}
 function renderList(kind,container,detail){const root=$(container);if(!state[kind].length){root.innerHTML='<div class="empty">Belum ada data. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=state[kind].map(x=>`<article class="item"><div class="item-main"><b>${esc(x.name)}</b><small>${detail(x)}</small></div><div class="item-actions"><button class="btn danger" data-remove="${kind}" data-id="${esc(x.id)}" aria-label="Hapus ${esc(x.name)}">Hapus</button></div></article>`).join("")}
 function render(){$("statItems").textContent=state.inventory.length;$("inventoryCount").textContent=state.inventory.length+" item";$("statWorlds").textContent=state.worlds.length;$("statEvents").textContent=state.events.length;$("eventCount").textContent=state.events.length+" event";renderList("inventory","inventoryList",x=>`${esc(x.category)} · ${x.quantity.toLocaleString("id-ID")} · ${esc(x.notes||"Tanpa catatan")}`);renderList("worlds","worldList",x=>`${esc(x.block||"Belum ada blok")} · ${x.quantity.toLocaleString("id-ID")} terpasang · ${esc(x.notes||"Tanpa catatan")}`);renderList("events","eventList",x=>{const pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;return `<small>${esc(x.target||"Tanpa target")} · ${x.current}/${x.goal}</small><div class="progress"><span style="width:${pct}%"></span></div>`});const recent=[...state.inventory.slice(-2).map(x=>`Inventory: ${esc(x.name)}`),...state.worlds.slice(-2).map(x=>`World: ${esc(x.name)}`),...state.events.slice(-2).map(x=>`Event: ${esc(x.name)}`)];$("overviewRecent").innerHTML=recent.length?recent.map(x=>`<div class="small muted">${x}</div>`).join("") :'<div class="small muted">Belum ada data tersimpan.</div>'}
+function formatEventDate(value){
+ const [year,month,day]=value.split("-").map(Number);
+ return new Date(year,month-1,day,12).toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"});
+}
+function getRecurringDates(item){
+ const [sy,sm,sd]=item.startDate.split("-").map(Number);
+ const startDate=new Date(sy,sm-1,sd,12);
+ const today=new Date();today.setHours(0,0,0,0);
+ const dates=[];
+ for(let offset=0;offset<18;offset++){
+  const monthStart=new Date(sy,sm-1+offset,1,12);
+  const firstDay=monthStart.getDay();
+  const targetDay=Number(item.recurrence?.weekdayNumber??4);
+  const day=1+((targetDay-firstDay+7)%7);
+  const date=new Date(monthStart.getFullYear(),monthStart.getMonth(),day,12);
+  if(date>=startDate&&date>=today)dates.push(date);
+  if(dates.length>=5)break;
+ }
+ return dates;
+}
 function renderAutoEvents(){
  const root=$("autoEventList");
  $("autoEventCount").textContent=autoEvents.length+" ditemukan";
  if(!autoEvents.length){root.innerHTML='<div class="empty">Belum ada pengumuman event yang terdeteksi. Data akan diperiksa berkala oleh sinkronisasi otomatis.</div>';return}
  root.innerHTML=autoEvents.map(x=>{
-  const date=x.startDate?(new Date(x.startDate+"T00:00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"})+(x.endDate?" – "+new Date(x.endDate+"T00:00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"")):(x.dateStatus==="unannounced"?"Belum ada tanggal resmi":x.publishedAt&&Number.isFinite(Date.parse(x.publishedAt))?"Pengumuman: "+new Date(x.publishedAt).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"Tanggal tidak tersedia");
   const added=state.events.some(e=>e.name.toLowerCase()===String(x.title||"").toLowerCase());
-  return `<article class="item"><div class="item-main"><b>${esc(x.title)}</b><small>${esc(x.category||"Event")} · ${date}</small><p>${esc(x.summary||"")}</p><a href="${esc(x.url||"https://steamcommunity.com/app/636040/allnews/")}" target="_blank" rel="noopener noreferrer">Lihat pengumuman Steam</a></div><div class="item-actions">${added?'<span class="small muted">Sudah ditambahkan</span>':`<button class="btn primary" data-add-auto="${esc(x.id)}">Tambahkan</button>`}</div></article>`;
+  if(x.recurrence?.frequency==="monthly"){
+   const dates=getRecurringDates(x);
+   const next=dates[0];
+   const upcoming=dates.slice(1,4);
+   const nextLabel=next?next.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"}):"Jadwal berikutnya belum tersedia";
+   const future=upcoming.length?'<details class="recurring-more"><summary>Lihat jadwal berikutnya</summary><ul>'+upcoming.map(d=>'<li>'+d.toLocaleDateString("id-ID",{day:"numeric",month:"long",year:"numeric"})+'</li>').join("")+'</ul></details>':'';
+   return '<article class="item recurring-event"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.title)+'</b><span class="recurring-badge">Rutin bulanan</span></div><small>'+esc(x.category||"Event")+' · Setiap Kamis pertama setiap bulan</small><div class="recurring-next"><span>Jadwal berikutnya</span><strong>'+nextLabel+'</strong></div><p>'+esc(x.summary||"")+'</p>'+future+'<a href="'+esc(x.url||"https://steamcommunity.com/app/636040/allnews/")+'" target="_blank" rel="noopener noreferrer">Lihat pengumuman Steam</a></div><div class="item-actions">'+(added?'<span class="small muted">Sudah ditambahkan</span>':'<button class="btn primary" data-add-auto="'+esc(x.id)+'">Tambahkan</button>')+'</div></article>';
+  }
+  const date=x.startDate?(formatEventDate(x.startDate)+(x.endDate?" – "+formatEventDate(x.endDate):"")):(x.dateStatus==="unannounced"?"Belum ada tanggal resmi":x.publishedAt&&Number.isFinite(Date.parse(x.publishedAt))?"Pengumuman: "+new Date(x.publishedAt).toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"}):"Tanggal tidak tersedia");
+  return '<article class="item"><div class="item-main"><b>'+esc(x.title)+'</b><small>'+esc(x.category||"Event")+' · '+date+'</small><p>'+esc(x.summary||"")+'</p><a href="'+esc(x.url||"https://steamcommunity.com/app/636040/allnews/")+'" target="_blank" rel="noopener noreferrer">Lihat pengumuman Steam</a></div><div class="item-actions">'+(added?'<span class="small muted">Sudah ditambahkan</span>':'<button class="btn primary" data-add-auto="'+esc(x.id)+'">Tambahkan</button>')+'</div></article>';
  }).join("");
 }
 async function loadAutoEvents(){
