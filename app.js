@@ -41,7 +41,7 @@ function parseAiInventory(text){
   if(/^(feather|bulu)$/i.test(name))name="Feather";
   const key=name.toLowerCase()+"|"+n;
   if(seen.has(key))return;seen.add(key);
-  const category=/seed|bibit/i.test(name)?"Seeds":/hat|shirt|pants|wear|wearable/i.test(name)?"Wearables":/coin|lock|currency|koin|world lock/i.test(name)?"Currency":/corn|turkey|thanksgiving/i.test(name)?"Event Items":"Blocks";
+  const category=/seed|bibit/i.test(name)?"Seeds":/hat|shirt|pants|wear|wearable/i.test(name)?"Wearables":/coin|lock|currency|koin|world lock/i.test(name)?"Currency":/corn block/i.test(name)?"Blocks":/corn|turkey|thanksgiving/i.test(name)?"Event Items":"Blocks";
   out.push({name,quantity:n,category});
  };
  for(const raw of lines){
