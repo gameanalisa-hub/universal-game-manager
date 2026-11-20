@@ -1,0 +1,18 @@
+{
+  "type": "sfl-transaction-feed",
+  "schemaVersion": 1,
+  "currency": "FLOWER",
+  "updatedAt": "2026-11-20T15:40:00+07:00",
+  "transactions": [
+    {
+      "id": "sfl-claim-onion-146-2026-11-20",
+      "item": "Onion",
+      "quantity": 146,
+      "amount": 1.3796,
+      "currency": "FLOWER",
+      "status": "claimed",
+      "claimedAt": "2026-11-20",
+      "source": "user-provided-claim-screenshot"
+    }
+  ]
+}
