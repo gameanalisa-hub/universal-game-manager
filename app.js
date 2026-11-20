@@ -84,8 +84,8 @@ function renderMarketReports(){
  const observed=latestPrice.observedAt?new Date(latestPrice.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
  const seasonHistoryHtml=seasonHistory.map(x=>'<span class="recurring-badge">'+x.season+' · '+(x.report?new Date(x.report.observedAt).toLocaleDateString("id-ID"):"Belum ada data")+'</span>').join(" ");
  const seasonNotice=activeSeason?(latestPrice.observedAt?"Data harga "+activeSeason+" · tren hanya dibandingkan dengan snapshot musim yang sama.":"Belum ada snapshot harga untuk "+activeSeason+". Perbarui feed untuk mulai merekam musim ini."):"Pilih musim sesuai kalender di dalam game untuk memfilter tanaman dan tren harga.";
- const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">Claimed</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
- root.innerHTML=targetHtml+'<p class="data-note">'+esc(seasonNotice)+'</p><div class="backup-actions">'+seasonHistoryHtml+'</div><section class="section-head"><h3>Transaksi claimed</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Keputusan Jual Musim Ini</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Status jual ditentukan dari perubahan harga P2P pada dua snapshot terbaru: naik = Layak Dijual, stabil = Tahan Dulu, turun = Jangan Dijual Dulu. Ini indikator tren harga, bukan jaminan barang pasti terjual.</p>';
+ const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">'+esc(tx.status==="sold"?"Terjual":"Claimed")+'</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
+ root.innerHTML=targetHtml+'<p class="data-note">'+esc(seasonNotice)+'</p><div class="backup-actions">'+seasonHistoryHtml+'</div><section class="section-head"><h3>Riwayat transaksi</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Keputusan Jual Musim Ini</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Status jual ditentukan dari perubahan harga P2P pada dua snapshot terbaru: naik = Layak Dijual, stabil = Tahan Dulu, turun = Jangan Dijual Dulu. Ini indikator tren harga, bukan jaminan barang pasti terjual.</p>';
 }
 $("sflFetchMarketBtn").onclick=()=>loadSflMarketFeed();
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
@@ -166,7 +166,7 @@ async function loadSflTransactionFeed(options={}) {
   if(!response.ok)throw new Error("HTTP "+response.status);
   const feed=await response.json();
   if(feed.type!=="sfl-transaction-feed"||feed.schemaVersion!==1||feed.currency!=="FLOWER"||!Array.isArray(feed.transactions))throw new Error("Format transaction feed tidak valid");
-  const transactions=feed.transactions.filter(t=>t&&typeof t.id==="string"&&t.id&&typeof t.item==="string"&&Number.isFinite(t.quantity)&&t.quantity>0&&Number.isFinite(t.amount)&&t.amount>=0&&t.currency==="FLOWER"&&t.status==="claimed");
+  const transactions=feed.transactions.filter(t=>t&&typeof t.id==="string"&&t.id&&typeof t.item==="string"&&Number.isFinite(t.quantity)&&t.quantity>0&&Number.isFinite(t.amount)&&t.amount>=0&&t.currency==="FLOWER"&&["claimed","sold"].includes(t.status));
   const prior=[...(sflState.marketReports||[])].sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt))[0];
   const marketPrices=prior&&Array.isArray(prior.marketPrices)?prior.marketPrices:[];
   const total=transactions.reduce((sum,t)=>sum+t.amount,4.632);
@@ -174,7 +174,7 @@ async function loadSflTransactionFeed(options={}) {
    type:"sfl-market-report",schemaVersion:1,id:"sfl-transactions-"+String(feed.updatedAt||feed.updatedDate||"latest").slice(0,10),
    observedAt:feed.updatedAt||new Date().toISOString(),currency:"FLOWER",walletBalance:null,
    confirmedReceipts:total,target:410,marketPrices,transactions,season:prior?.season||sflState.activeSeason||null,
-   summary:"Penerimaan historis estimasi 4.632 FLOWER ditambah transaksi claimed dari Public Transaction Feed. Bukan saldo wallet.",
+   summary:"Penerimaan historis estimasi 4.632 FLOWER ditambah transaksi claimed dan penjualan dari Public Transaction Feed. Bukan saldo wallet.",
    dataGaps:["Saldo wallet aktual belum diverifikasi.","Feed transaksi bersifat publik."]
   };
   sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
@@ -183,7 +183,7 @@ async function loadSflTransactionFeed(options={}) {
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
   sflState.marketReports=sflState.marketReports.slice(-100);
   await saveSfl();
-  if(status)status.textContent="Transaksi tersinkron · "+transactions.length+" catatan claimed · penerimaan estimasi "+total.toFixed(4)+" FLOWER.";
+  if(status)status.textContent="Transaksi tersinkron · "+transactions.length+" catatan transaksi · penerimaan estimasi "+total.toFixed(4)+" FLOWER.";
  } catch(error) {
   if(status&&!options.silent)status.textContent="Feed transaksi belum dapat dimuat ("+(error.message||"kesalahan jaringan")+").";
  }
