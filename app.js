@@ -362,7 +362,7 @@ if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname
 load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
 
-// Pixel Worlds BC/hour calculator: strict input validation and clear comparison.
+// Pixel Worlds BC/hour calculator: total earnings divided by actual farming time.
 function updatePwFarmCalc(){
  const read=id=>{
   const raw=$(id).value.trim();
@@ -370,29 +370,16 @@ function updatePwFarmCalc(){
   const n=Number(raw);
   return Number.isFinite(n)?n:NaN;
  };
- const blocks=read("pwCalcBlocks"),value=read("pwCalcValue"),hours=read("pwCalcInterval"),offer=read("pwCalcOffer");
- const verdict=$("pwCalcVerdict");
+ const total=read("pwCalcTotal"),hours=read("pwCalcHours");
+ const output=$("pwCalcHour"),verdict=$("pwCalcVerdict");
+ output.textContent="— BC/jam";
  const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:4});
- const reset=(message)=>{
-  $("pwCalcHour").textContent="— BC/jam";
-  $("pwCalcOfferHour").textContent="— BC/jam";
-  verdict.textContent=message;
- };
- if(blocks===null||value===null||hours===null){reset("Lengkapi 3 angka utama untuk menghitung.");return}
- if(!Number.isInteger(blocks)||blocks<=0){reset("Jumlah block harus bilangan bulat lebih dari 0.");return}
- if(!Number.isFinite(value)||value<0){reset("Hasil per block harus 0 atau lebih.");return}
- if(!Number.isFinite(hours)||hours<=0){reset("Waktu siklus harus lebih dari 0 jam.");return}
- const production=blocks*value/hours;
- $("pwCalcHour").textContent=fmt(production)+" BC/jam";
- if(offer===null){$("pwCalcOfferHour").textContent="— BC/jam";verdict.textContent="Hasil panen sudah dihitung. Isi tawaran PWE jika ingin membandingkan.";return}
- if(!Number.isFinite(offer)||offer<0){$("pwCalcOfferHour").textContent="— BC/jam";verdict.textContent="Tawaran PWE harus 0 atau lebih.";return}
- const sale=blocks*offer/hours;
- $("pwCalcOfferHour").textContent=fmt(sale)+" BC/jam";
- const difference=offer-value;
- if(difference<0)verdict.textContent="Tawaran lebih rendah "+fmt(Math.abs(difference))+" BC/block ("+fmt(production-sale)+" BC/jam).";
- else if(difference>0)verdict.textContent="Tawaran lebih tinggi "+fmt(difference)+" BC/block ("+fmt(sale-production)+" BC/jam).";
- else verdict.textContent="Tawaran sama dengan hasil per block.";
+ if(total===null||hours===null){verdict.textContent="Lengkapi total BC dan total waktu farming.";return}
+ if(!Number.isFinite(total)||total<0){verdict.textContent="Total BC harus 0 atau lebih.";return}
+ if(!Number.isFinite(hours)||hours<=0){verdict.textContent="Total waktu farming harus lebih dari 0 jam.";return}
+ output.textContent=fmt(total/hours)+" BC/jam";
+ verdict.textContent="Rata-rata hasil farming berdasarkan waktu yang kamu masukkan.";
 }
-["pwCalcBlocks","pwCalcValue","pwCalcInterval","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
+["pwCalcTotal","pwCalcHours"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
 updatePwFarmCalc();
 })();
