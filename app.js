@@ -48,7 +48,7 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],priceReports=reports.filter(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason):priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason},previous=priceReports.filter(r=>r!==latestPrice).find(r=>(r.season||null)===(latestPrice.season||null));
+ const latest=reports[0],priceReports=reports.filter(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason)||priceReports[0]:priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason},previous=priceReports.filter(r=>r!==latestPrice).find(r=>(r.season||null)===(latestPrice.season||null));
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
