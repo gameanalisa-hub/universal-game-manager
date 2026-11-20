@@ -2,7 +2,15 @@
 "use strict";
 const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
-const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[],marketReports:[]});
+const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[],marketReports:[],activeSeason:null});
+const SFL_SEASON_CROPS={
+ Spring:["Sunflower","Rhubarb","Carrot","Cabbage","Soybean","Corn","Wheat","Kale","Barley"],
+ Summer:["Sunflower","Potato","Zucchini","Beetroot","Pepper","Cauliflower","Eggplant","Radish","Wheat"],
+ Autumn:["Potato","Pumpkin","Carrot","Yam","Broccoli","Soybean","Wheat","Artichoke","Barley"],
+ Winter:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Wheat","Turnip","Kale"]
+};
+const SFL_SEASONS=["Spring","Summer","Autumn","Winter"];
+
 let state=blank(),sflState=blankSfl(),scanCandidates=[],autoEvents=[];
 const notice=msg=>{$("notice").textContent=msg};
 function dbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB,VERSION);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
@@ -24,6 +32,7 @@ $("gamePixelBtn").onclick=()=>switchGame("pixel");$("gameSunflowerBtn").onclick=
 document.querySelectorAll("[data-sfl-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id===b.dataset.sflTab))}));
 document.querySelectorAll("[data-sfl-cancel]").forEach(b=>b.addEventListener("click",()=>hideSflForm(b.dataset.sflCancel)));
 $("sflAddItemBtn").onclick=()=>showSflForm("sflItemForm");$("sflAddCropBtn").onclick=()=>showSflForm("sflCropForm");$("sflAddGoalBtn").onclick=()=>showSflForm("sflGoalForm");
+$("sflSeasonSelect").onchange=async e=>{sflState.activeSeason=SFL_SEASONS.includes(e.target.value)?e.target.value:null;await saveSfl();await loadSflMarketFeed({silent:true});};
 $("sflItemForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.inventory.push({id:id(),name:f.get("name").trim(),category:f.get("category"),quantity:Number(f.get("quantity")),notes:f.get("notes").trim()});hideSflForm("sflItemForm");await saveSfl()};
 $("sflCropForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.crops.push({id:id(),name:f.get("name").trim(),quantity:Number(f.get("quantity")),status:f.get("status"),harvestDate:f.get("harvestDate"),notes:f.get("notes").trim()});hideSflForm("sflCropForm");await saveSfl()};
 $("sflGoalForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.goals.push({id:id(),name:f.get("name").trim(),current:Number(f.get("current")),goal:Number(f.get("goal")),notes:f.get("notes").trim()});hideSflForm("sflGoalForm");await saveSfl()};
@@ -39,7 +48,10 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],previous=reports.slice(1).find(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null));
+ const latest=reports[0],priceReports=reports.filter(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)),latestPrice=priceReports[0]||latest,previous=priceReports.slice(1).find(r=>(r.season||null)===(latestPrice.season||null));
+ const activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null;
+ const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
+ const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
  for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string")transactionMap.set(tx.id,tx);
  const transactions=[...transactionMap.values()].sort((a,b)=>String(b.claimedAt||"").localeCompare(String(a.claimedAt||"")));
@@ -53,7 +65,7 @@ function renderMarketReports(){
   }
  }
  const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey"]);
- const items=(latest.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))).map(p=>{
+ const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))&&(!seasonCrops||seasonCrops.includes(String(p.item||"")))).map(p=>{
   const before=olderPrices.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
   const trend=before==null?"unknown":now>before?"up":now<before?"down":"stable";
   const change=before!=null&&before!==0?((now-before)/before*100):null;
@@ -67,9 +79,11 @@ function renderMarketReports(){
   return {...p,label,trendLabel};
  }).sort((a,b)=>a.trend==="up"?-1:b.trend==="up"?1:a.trend==="down"?-1:b.trend==="down"?1:a.item.localeCompare(b.item));
  const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span><span>Keputusan<strong>'+esc(p.label)+'</strong></span></div></div></article>').join(""):'<div class="empty">Belum ada harga P2P yang tersedia.</div>';
- const observed=latest.observedAt?new Date(latest.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
+ const observed=latestPrice.observedAt?new Date(latestPrice.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
+ const seasonHistoryHtml=seasonHistory.map(x=>'<span class="recurring-badge">'+x.season+' · '+(x.report?new Date(x.report.observedAt).toLocaleDateString("id-ID"):"Belum ada data")+'</span>').join(" ");
+ const seasonNotice=activeSeason?"Menampilkan tanaman yang bisa ditanam pada "+activeSeason+". Tren dibandingkan hanya dengan snapshot musim yang sama.":"Pilih musim sesuai kalender di dalam game untuk memfilter tanaman dan tren harga.";
  const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">Claimed</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
- root.innerHTML=targetHtml+'<section class="section-head"><h3>Transaksi claimed</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Item yang harganya sedang naik</h3><span class="small muted">'+rising.length+' item</span></section><div class="list">'+risingHtml+'</div><section class="section-head"><h3>Rekomendasi jual atau tahan</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Tren dihitung dari snapshot terbaru dibandingkan snapshot sebelumnya. Kenaikan harga bukan jaminan barang pasti terjual.</p>';
+ root.innerHTML=targetHtml+'<section class="card recurring-event backup-card"><div class="recurring-heading"><h3>Market berdasarkan musim</h3><span class="recurring-badge">Pilih musim aktif</span></div><label class="small muted" for="sflSeasonSelect">Musim sesuai kalender dalam game</label><select id="sflSeasonSelect" class="season-select"><option value="">Pilih musim…</option><option value="Spring">Spring</option><option value="Summer">Summer</option><option value="Autumn">Autumn</option><option value="Winter">Winter</option></select><p class="data-note">'+esc(seasonNotice)+'</p><div class="backup-actions">'+seasonHistoryHtml+'</div></section><section class="section-head"><h3>Transaksi claimed</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Item yang harganya sedang naik</h3><span class="small muted">'+rising.length+' item</span></section><div class="list">'+risingHtml+'</div><section class="section-head"><h3>Rekomendasi jual atau tahan</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Tren dihitung dari snapshot terbaru dibandingkan snapshot sebelumnya. Kenaikan harga bukan jaminan barang pasti terjual.</p>';
 }
 $("sflFetchMarketBtn").onclick=()=>loadSflMarketFeed();
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
@@ -112,6 +126,7 @@ async function loadSflMarketFeed(options={}){
   if(!snapshots.length)throw new Error("Belum ada snapshot harga pada feed");
   sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
   let added=0;
+  const newestDate=snapshots.map(x=>String(x.date||"")).sort().slice(-1)[0];
   for(const snapshot of snapshots){
    const marketPrices=Object.entries(snapshot.prices).filter(([item,value])=>item&&Number.isFinite(Number(value))&&Number(value)>=0).map(([item,value])=>({
     item,p2pPrice:Number(value),source:"SFL.world P2P",observedAt:snapshot.sourceUpdatedAt||snapshot.observedAt,metric:"p2p"
@@ -120,6 +135,7 @@ async function loadSflMarketFeed(options={}){
    const report={
     type:"sfl-market-report",schemaVersion:1,id:"sfl-market-"+(snapshot.observedAt||snapshot.date),
     observedAt:snapshot.observedAt||feed.generatedAt,currency:"FLOWER",
+    season:(String(snapshot.date||"")===newestDate&&SFL_SEASONS.includes(sflState.activeSeason))?sflState.activeSeason:null,
     walletBalance:null,confirmedReceipts:4.632,target:410,
     marketPrices,transactions:[],
     summary:"Snapshot harga P2P SFL.world · "+marketPrices.length+" item. Harga P2P bukan last sale atau floor.",
@@ -128,7 +144,7 @@ async function loadSflMarketFeed(options={}){
     sourceUpdatedAt:snapshot.sourceUpdatedAt||null
    };
    const index=sflState.marketReports.findIndex(x=>x.id===report.id);
-   if(index>=0)sflState.marketReports[index]=report;else{sflState.marketReports.push(report);added++}
+   if(index>=0){if(!report.season&&sflState.marketReports[index].season)report.season=sflState.marketReports[index].season;sflState.marketReports[index]={...sflState.marketReports[index],...report}}else{sflState.marketReports.push(report);added++}
   }
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
   sflState.marketReports=sflState.marketReports.slice(-100);
@@ -155,7 +171,7 @@ async function loadSflTransactionFeed(options={}) {
   const report={
    type:"sfl-market-report",schemaVersion:1,id:"sfl-transactions-"+String(feed.updatedAt||feed.updatedDate||"latest").slice(0,10),
    observedAt:feed.updatedAt||new Date().toISOString(),currency:"FLOWER",walletBalance:null,
-   confirmedReceipts:total,target:410,marketPrices,transactions,
+   confirmedReceipts:total,target:410,marketPrices,transactions,season:prior?.season||sflState.activeSeason||null,
    summary:"Penerimaan historis estimasi 4.632 FLOWER ditambah transaksi claimed dari Public Transaction Feed. Bukan saldo wallet.",
    dataGaps:["Saldo wallet aktual belum diverifikasi.","Feed transaksi bersifat publik."]
   };
@@ -170,7 +186,7 @@ async function loadSflTransactionFeed(options={}) {
   if(status&&!options.silent)status.textContent="Feed transaksi belum dapat dimuat ("+(error.message||"kesalahan jaringan")+").";
  }
 }
-function renderSfl(){ sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
+function renderSfl(){ const seasonSelect=$("sflSeasonSelect");if(seasonSelect)seasonSelect.value=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:""; sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sfl-remove]");if(!b)return;const kind=b.dataset.sflRemove,item=sflState[kind].find(x=>x.id===b.dataset.id);if(!item||!confirm('Hapus "'+item.name+'"?'))return;sflState[kind]=sflState[kind].filter(x=>x.id!==item.id);saveSfl()});
 
 function id(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2)}
