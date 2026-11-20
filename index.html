@@ -86,16 +86,19 @@ footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
 
 <div class="market-status"><span class="status-dot"></span><span>Data harga PWE belum terhubung</span></div>
 <div class="market-columns"><section class="market-list"><h3>↗ Harga naik</h3><div class="empty">Belum ada data harga valid.</div></section><section class="market-list"><h3>↘ Harga turun</h3><div class="empty">Belum ada data harga valid.</div></section></div>
-<details class="card backup-card pw-calc" id="pwFarmCalc"><summary>🌾 Hitung BC per jam <span class="small muted">· Kalkulator singkat</span></summary>
-<p class="muted small">Isi angka produksi dan harga tawaran bila ingin membandingkan.</p>
+<details class="card backup-card pw-calc" id="pwFarmCalc">
+<summary>🌾 Hitung BC per jam</summary>
+<p class="muted small">Isi 3 angka utama. Tawaran PWE hanya jika ingin membandingkan.</p>
 <div class="pw-calc-fields">
-<label>Jumlah block<input id="pwCalcBlocks" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 200"></label>
-<label>Nilai panen / block (BC)<input id="pwCalcValue" type="number" min="0" step="any" inputmode="decimal" placeholder="Contoh: 5"></label>
-<label>Waktu panen (jam)<input id="pwCalcInterval" type="number" min="0.01" step="any" inputmode="decimal" placeholder="Contoh: 8"></label>
-<label>Tawaran PWE / block (BC)<input id="pwCalcOffer" type="number" min="0" step="any" inputmode="decimal" placeholder="Opsional"></label></div>
-<div class="pw-calc-results"><div><span>Potensi produksi</span><strong id="pwCalcHour">— BC/jam</strong></div><div><span>Jika dijual di tawaran</span><strong id="pwCalcOfferHour">— BC/jam</strong></div></div>
-<p id="pwCalcVerdict" class="pw-calc-verdict" role="status" aria-live="polite">Masukkan jumlah block, nilai panen, dan waktu panen.</p>
-<p class="data-note">Rumus: jumlah block × BC per panen ÷ waktu panen. Harga harus berasal dari data terverifikasi.</p></details>
+<label>Block yang dipanen<input id="pwCalcBlocks" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 200"></label>
+<label>Hasil per block (BC)<input id="pwCalcValue" type="number" min="0" step="any" inputmode="decimal" placeholder="Contoh: 5"></label>
+<label>Waktu 1 siklus (jam)<input id="pwCalcInterval" type="number" min="0.01" step="any" inputmode="decimal" placeholder="Contoh: 8"></label>
+<label>Tawaran PWE per block (BC) · opsional<input id="pwCalcOffer" type="number" min="0" step="any" inputmode="decimal" placeholder="Kosongkan jika tidak perlu"></label>
+</div>
+<div class="pw-calc-results"><div><span>Hasil panen</span><strong id="pwCalcHour">— BC/jam</strong></div><div><span>Jika dijual</span><strong id="pwCalcOfferHour">— BC/jam</strong></div></div>
+<p id="pwCalcVerdict" class="pw-calc-verdict" role="status" aria-live="polite">Masukkan jumlah block, hasil per block, dan waktu siklus.</p>
+<p class="data-note">Rumus: block × hasil per block ÷ waktu siklus. Masukkan harga/tawaran dalam BC.</p>
+</details>
 <p class="data-note">Pasar: Pixel Worlds Exchange · Mata uang: BC. Harga tidak ditampilkan sebelum sumber PWE valid tersedia.</p>
 </section>
 
@@ -118,4 +121,4 @@ footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
 <section class="panel" id="sflGoals"><div class="section-head"><h3>Target & Progress</h3><button class="btn primary" id="sflAddGoalBtn">＋ Tambah target</button></div><form class="form hidden" id="sflGoalForm"><label>Nama target<input name="name" maxlength="70" required placeholder="Contoh: Kumpulkan 500 Sunflower"></label><label>Jumlah saat ini<input name="current" type="number" min="0" step="1" value="0"></label><label>Target jumlah<input name="goal" type="number" min="1" step="1" required value="1"></label><label>Catatan<input name="notes" maxlength="120" placeholder="Opsional"></label><div class="form-actions"><button class="btn primary" type="submit">Simpan target</button><button class="btn" type="button" data-sfl-cancel="sflGoalForm">Batal</button></div></form><div id="sflGoalList" class="list"></div></section>
 <section class="panel active" id="sflMarket"><div class="section-head"><h3>Riset Marketplace</h3><span class="small muted">Tren harga · Rekomendasi jual · Target 410</span></div><div class="card recurring-event backup-card"><div class="recurring-heading"><h3>Feed harga otomatis</h3><span class="recurring-badge">SFL.world</span></div><p class="muted small">UGM mengambil snapshot harga P2P harian dari feed publik SFL.world. Data disimpan lokal dan dipakai untuk membandingkan tren antarhari.</p><div class="backup-actions"><button class="btn primary" id="sflFetchMarketBtn" type="button">↻ Perbarui harga</button></div><div class="notice" id="sflMarketStatus" role="status" aria-live="polite">Feed akan dimuat otomatis saat dashboard dibuka.</div></div><details class="card recurring-event backup-card"><summary>Impor laporan manual (opsional)</summary><p class="muted small">Gunakan ini hanya jika ingin memasukkan laporan Scheduled Task Pantau Harian Market SFL.</p><textarea id="sflMarketJson" rows="7" placeholder='Tempel JSON laporan di sini, termasuk tanda kurung kurawal { }' style="width:100%;background:#0b1423;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;font:12px monospace"></textarea><div class="backup-actions"><button class="btn primary" id="sflImportMarketBtn" type="button">Impor laporan</button><button class="btn" type="button" id="sflClearMarketBtn">Bersihkan</button></div></details><div id="sflMarketList" class="list"></div></section><section class="panel" id="sflBackup"><div class="card recurring-event backup-card"><h3>Backup seluruh UGM</h3><p class="muted small">Gunakan tombol di sini atau di menu Backup Pixel Worlds. Satu file mencakup Pixel Worlds dan Sunflower Land.</p><div class="backup-actions"><button class="btn primary" id="sflExportAllBtn">Ekspor semua data</button><label class="btn" for="sflImportAllFile">Impor semua data</label><input class="hidden" id="sflImportAllFile" type="file" accept="application/json,.json"></div><div class="notice" id="sflNotice" role="status" aria-live="polite"></div></div></section>
 </section></main><footer>Universal Game Manager · Prototipe lokal · Tidak terhubung ke server atau akun game.</footer>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script><script src="app.js?v=33"></script></body></html>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script><script src="app.js?v=34"></script></body></html>
