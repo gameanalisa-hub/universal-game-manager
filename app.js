@@ -4,10 +4,10 @@ const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(i
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
 const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[],marketReports:[],activeSeason:null});
 const SFL_SEASON_CROPS={
- Spring:["Sunflower","Rhubarb","Carrot","Cabbage","Soybean","Corn","Wheat","Kale","Barley"],
- Summer:["Sunflower","Potato","Zucchini","Beetroot","Pepper","Cauliflower","Eggplant","Radish","Wheat"],
- Autumn:["Potato","Pumpkin","Carrot","Yam","Broccoli","Soybean","Wheat","Artichoke","Barley"],
- Winter:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Wheat","Turnip","Kale"]
+ Spring:["Sunflower","Rhubarb","Carrot","Cabbage","Soybean","Corn","Wheat","Kale","Barley","Tomato","Blueberry","Orange","Grape","Rice","Olive"],
+ Summer:["Sunflower","Potato","Zucchini","Beetroot","Pepper","Cauliflower","Eggplant","Radish","Wheat","Lemon","Orange","Banana","Grape","Rice","Olive"],
+ Autumn:["Potato","Pumpkin","Carrot","Yam","Broccoli","Soybean","Wheat","Artichoke","Barley","Tomato","Apple","Banana","Grape","Rice","Olive"],
+ Winter:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Wheat","Turnip","Kale","Lemon","Blueberry","Apple","Grape","Rice","Olive"]
 };
 const SFL_SEASONS=["Spring","Summer","Autumn","Winter"];
 
@@ -64,7 +64,7 @@ function renderMarketReports(){
    if(p.p2pPrice!=null&&!olderPrices.has(String(p.item||"").toLowerCase()))olderPrices.set(String(p.item||"").toLowerCase(),Number(p.p2pPrice));
   }
  }
- const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey"]);
+ const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey","Grape","Rice","Olive"]);
  const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))&&(!seasonCrops||seasonCrops.includes(String(p.item||"")))).map(p=>{
   const before=olderPrices.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
   const trend=before==null?"unknown":now>before?"up":now<before?"down":"stable";
