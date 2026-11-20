@@ -2,7 +2,7 @@
   "type": "sfl-transaction-feed",
   "schemaVersion": 1,
   "currency": "FLOWER",
-  "updatedAt": "2026-11-20T15:40:00+07:00",
+  "updatedAt": "2026-11-20T20:40:00+07:00",
   "transactions": [
     {
       "id": "sfl-claim-onion-146-2026-11-20",
@@ -13,6 +13,16 @@
       "status": "claimed",
       "claimedAt": "2026-11-20",
       "source": "user-provided-claim-screenshot"
+    },
+    {
+      "id": "sfl-sale-carrot-200-2026-11-20",
+      "item": "Carrot",
+      "quantity": 200,
+      "amount": 0.2215,
+      "currency": "FLOWER",
+      "status": "sold",
+      "soldAt": "2026-11-20",
+      "source": "user-provided-transaction"
     }
   ]
 }
