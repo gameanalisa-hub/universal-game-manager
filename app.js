@@ -170,7 +170,7 @@ function renderTrackedEvents(){
  root.innerHTML=state.events.map(x=>{
   const pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;
   const progress=x.goal>0?x.current.toLocaleString("id-ID")+" / "+x.goal.toLocaleString("id-ID")+" ("+pct+"%)":"Progres belum ditentukan";
-  return '<article class="item recurring-event event-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">Tracker pribadi</span></div><small>'+esc(x.target||"Target belum ditentukan")+'</small><div class="recurring-next"><span>Progres event</span><strong>'+progress+'</strong>'+(x.goal>0?'<div class="progress"><span style="width:'+pct+'%"></span></div>':'')+'</div>'+(x.sourceUrl?'<a href="'+esc(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Lihat sumber pengumuman</a>':'')+'</div><div class="item-actions"><button class="btn danger" data-remove="events" data-id="'+esc(x.id)+'" aria-label="Hapus '+esc(x.name)+'">Hapus</button></div></article>';
+  return '<article class="item recurring-event event-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">Tracker pribadi</span></div><small>'+esc(x.target||"Target belum ditentukan")+'</small><div class="recurring-next"><span>Progres event</span><strong>'+progress+'</strong>'+(x.goal>0?'<div class="progress"><span style="width:'+pct+'%"></span></div>':'')+'</div>'+(x.sourceUrl?'<a href="'+esc(x.sourceUrl)+'" target="_blank" rel="noopener noreferrer">Lihat sumber pengumuman</a>':'')+'</div><div class="item-actions"><button class="btn" data-edit-event="'+esc(x.id)+'">Update progres</button><button class="btn danger" data-remove="events" data-id="'+esc(x.id)+'" aria-label="Hapus '+esc(x.name)+'">Hapus</button></div></article>';
  }).join("");
 }
 function render(){
@@ -266,6 +266,15 @@ $("autoEventList").addEventListener("click",async e=>{
  await save();
  renderAutoEvents();
  $("autoEventStatus").textContent="Event ditambahkan ke Daftar Event.";
+});
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("[data-edit-event]");if(!b)return;
+ const item=state.events.find(x=>x.id===b.dataset.editEvent);if(!item)return;
+ const currentText=prompt("Progres saat ini:",String(item.current??0));if(currentText===null)return;
+ const goalText=prompt("Target jumlah:",String(item.goal??0));if(goalText===null)return;
+ const current=Number(currentText),goal=Number(goalText);
+ if(!Number.isSafeInteger(current)||current<0||!Number.isSafeInteger(goal)||goal<0){alert("Masukkan angka bulat 0 atau lebih.");return}
+ item.current=current;item.goal=goal;await save();
 });
 document.addEventListener("click",e=>{const b=e.target.closest("[data-remove]");if(b)remove(b.dataset.remove,b.dataset.id)});
 function exportAllData(){
