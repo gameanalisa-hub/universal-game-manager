@@ -362,7 +362,7 @@ if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname
 load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
 
-// Pixel Worlds BC/hour calculator: total earnings divided by actual farming time.
+// Pixel Worlds PWE offer calculator: block count multiplied by offer per block.
 function updatePwFarmCalc(){
  const read=id=>{
   const raw=$(id).value.trim();
@@ -370,16 +370,16 @@ function updatePwFarmCalc(){
   const n=Number(raw);
   return Number.isFinite(n)?n:NaN;
  };
- const total=read("pwCalcTotal"),hours=read("pwCalcHours");
- const output=$("pwCalcHour"),verdict=$("pwCalcVerdict");
- output.textContent="— BC/jam";
+ const blocks=read("pwCalcBlocks"),offer=read("pwCalcOffer");
+ const output=$("pwCalcTotalOffer"),verdict=$("pwCalcVerdict");
+ output.textContent="— BC";
  const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:4});
- if(total===null||hours===null){verdict.textContent="Lengkapi total BC dan total waktu farming.";return}
- if(!Number.isFinite(total)||total<0){verdict.textContent="Total BC harus 0 atau lebih.";return}
- if(!Number.isFinite(hours)||hours<=0){verdict.textContent="Total waktu farming harus lebih dari 0 jam.";return}
- output.textContent=fmt(total/hours)+" BC/jam";
- verdict.textContent="Rata-rata hasil farming berdasarkan waktu yang kamu masukkan.";
+ if(blocks===null||offer===null){verdict.textContent="Lengkapi jumlah block dan tawaran PWE per block.";return}
+ if(!Number.isInteger(blocks)||blocks<=0){verdict.textContent="Jumlah block harus bilangan bulat lebih dari 0.";return}
+ if(!Number.isFinite(offer)||offer<0){verdict.textContent="Tawaran PWE harus 0 atau lebih.";return}
+ output.textContent=fmt(blocks*offer)+" BC";
+ verdict.textContent="Perkiraan total BC jika semua block terjual pada tawaran tersebut.";
 }
-["pwCalcTotal","pwCalcHours"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
+["pwCalcBlocks","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
 updatePwFarmCalc();
 })();
