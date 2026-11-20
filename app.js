@@ -114,11 +114,11 @@ async function loadSflMarketFeed(options={}){
    }));
    if(!marketPrices.length)continue;
    const report={
-    type:"sfl-market-report",schemaVersion:1,id:"sfl-market-"+snapshot.date,
+    type:"sfl-market-report",schemaVersion:1,id:"sfl-market-"+(snapshot.observedAt||snapshot.date),
     observedAt:snapshot.observedAt||feed.generatedAt,currency:"FLOWER",
     walletBalance:null,confirmedReceipts:4.632,target:410,
     marketPrices,transactions:[],
-    summary:"Snapshot harian harga P2P SFL.world · "+marketPrices.length+" item. Harga P2P bukan last sale atau floor.",
+    summary:"Snapshot harga P2P SFL.world · "+marketPrices.length+" item. Harga P2P bukan last sale atau floor.",
     dataGaps:["Feed ini hanya menyediakan harga P2P; last sale, floor, listing, dan volume tidak tersedia."],
     sourceUrl:feed.sourceUrl||"https://sfl.world/api/v1/prices",
     sourceUpdatedAt:snapshot.sourceUpdatedAt||null
@@ -130,7 +130,7 @@ async function loadSflMarketFeed(options={}){
   sflState.marketReports=sflState.marketReports.slice(-100);
   await saveSfl();
   const latest=snapshots[snapshots.length-1];
-  if(status)status.textContent="Feed otomatis aktif · "+snapshots.length+" snapshot harian · "+Object.keys(latest.prices).length+" item · terbaru "+latest.date+".";
+  if(status)status.textContent="Feed otomatis aktif · "+snapshots.length+" snapshot · "+Object.keys(latest.prices).length+" item · terbaru "+latest.date+".";
  }catch(error){
   if(status)status.textContent="Feed otomatis belum dapat dimuat ("+(error.message||"kesalahan jaringan")+"). Impor JSON manual tetap tersedia.";
  }finally{
