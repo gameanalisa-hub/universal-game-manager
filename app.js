@@ -50,6 +50,7 @@ function renderMarketReports(){
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const latest=reports[0],priceReports=reports.filter(r=>r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason)||priceReports[0]:priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason},previous=priceReports.filter(r=>r!==latestPrice).find(r=>(r.season||null)===(latestPrice.season||null));
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
+ const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
  for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string")transactionMap.set(tx.id,tx);
@@ -65,7 +66,7 @@ function renderMarketReports(){
   }
  }
  const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey","Grape","Rice","Olive"]);
- const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))&&(!seasonCrops||seasonCrops.includes(String(p.item||"")))).map(p=>{
+ const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))&&(!allowedSeasonCrops||allowedSeasonCrops.has(String(p.item||"").trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase()))).map(p=>{
   const before=olderPrices.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
   const trend=before==null?"unknown":now>before?"up":now<before?"down":"stable";
   const change=before!=null&&before!==0?((now-before)/before*100):null;
