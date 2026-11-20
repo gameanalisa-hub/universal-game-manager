@@ -362,7 +362,7 @@ if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname
 load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
 
-// Pixel Worlds PWE offer calculator: block count multiplied by offer per block.
+// Pixel Worlds PWE offer calculator: seed count multiplied by offer per seed.
 function updatePwFarmCalc(){
  const read=id=>{
   const raw=$(id).value.trim();
@@ -370,16 +370,16 @@ function updatePwFarmCalc(){
   const n=Number(raw);
   return Number.isFinite(n)?n:NaN;
  };
- const blocks=read("pwCalcBlocks"),offer=read("pwCalcOffer");
+ const seeds=read("pwCalcSeeds"),offer=read("pwCalcOffer");
  const output=$("pwCalcTotalOffer"),verdict=$("pwCalcVerdict");
  output.textContent="— BC";
  const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:4});
- if(blocks===null||offer===null){verdict.textContent="Lengkapi jumlah block dan tawaran PWE per block.";return}
- if(!Number.isInteger(blocks)||blocks<=0){verdict.textContent="Jumlah block harus bilangan bulat lebih dari 0.";return}
+ if(seeds===null||offer===null){verdict.textContent="Lengkapi jumlah seed dan tawaran PWE per seed.";return}
+ if(!Number.isInteger(seeds)||seeds<=0){verdict.textContent="Jumlah seed harus bilangan bulat lebih dari 0.";return}
  if(!Number.isFinite(offer)||offer<0){verdict.textContent="Tawaran PWE harus 0 atau lebih.";return}
- output.textContent=fmt(blocks*offer)+" BC";
- verdict.textContent="Perkiraan total BC jika semua block terjual pada tawaran tersebut.";
+ output.textContent=fmt(seeds*offer)+" BC";
+ verdict.textContent="Perkiraan total BC jika semua seed terjual pada tawaran tersebut.";
 }
-["pwCalcBlocks","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
+["pwCalcSeeds","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
 updatePwFarmCalc();
 })();
