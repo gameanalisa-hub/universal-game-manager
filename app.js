@@ -361,4 +361,43 @@ $("saveScanBtn").onclick=async()=>{let count=0,skipped=0;for(let i=0;i<scanCandi
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
+
+// Pixel Worlds farm profit calculator: use only values supplied by the player.
+function updatePwFarmCalc(){
+ const number=id=>{const raw=$(id).value.trim();if(!raw)return null;const n=Number(raw.replace(",","."));return Number.isFinite(n)?n:null};
+ const blocks=number("pwCalcBlocks"),value=number("pwCalcValue"),hours=number("pwCalcInterval"),booster=number("pwCalcBooster"),offer=number("pwCalcOffer");
+ const ids=["pwCalcHarvest","pwCalcHour","pwCalcDay","pwCalcWeek","pwCalcUnit","pwCalcOfferHour"];
+ const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:2});
+ const verdict=$("pwCalcVerdict");
+ if(!(blocks>0&&Number.isInteger(blocks)&&value!==null&&value>=0&&hours>0&&booster>0)){
+  ids.forEach(id=>$(id).textContent="—");
+  verdict.textContent="Isi jumlah block, nilai BC per block, dan interval panen yang valid.";
+  return;
+ }
+ const perHarvest=value*blocks*booster,perHour=perHarvest/hours,perDay=perHour*24,perWeek=perDay*7;
+ $("pwCalcHarvest").textContent=fmt(perHarvest)+" BC";
+ $("pwCalcHour").textContent=fmt(perHour)+" BC";
+ $("pwCalcDay").textContent=fmt(perHour*3)+" BC";
+ $("pwCalcWeek").textContent=fmt(perHour*21)+" BC";
+ $("pwCalcUnit").textContent=fmt(value*booster)+" BC";
+ if(offer===null){
+  $("pwCalcOfferHour").textContent="—";
+  verdict.textContent="Estimasi produksi sudah dihitung. Masukkan harga tawaran PWE per block untuk membandingkannya dengan nilai acuan.";
+  return;
+ }
+ if(offer<0){$("pwCalcOfferHour").textContent="—";verdict.textContent="Harga tawaran tidak boleh negatif.";return}
+ const offerHour=offer*blocks*booster/hours;
+ $("pwCalcOfferHour").textContent=fmt(offerHour)+" BC/jam";
+ const delta=offer-(value*booster),pct=value*booster>0?(delta/(value*booster))*100:0;
+ if(delta<0){
+  verdict.textContent="Tawaran PWE di bawah nilai acuan produksi sebesar "+fmt(Math.abs(delta))+" BC/block ("+fmt(Math.abs(pct))+"%). Estimasi hasil pada harga tawaran: "+fmt(offerHour)+" BC/jam. Pertimbangkan tahan atau cek listing lain.";
+ }else if(delta>0){
+  verdict.textContent="Tawaran PWE di atas nilai acuan produksi sebesar "+fmt(delta)+" BC/block ("+fmt(pct)+"%). Estimasi hasil pada harga tawaran: "+fmt(offerHour)+" BC/jam.";
+ }else{
+  verdict.textContent="Tawaran PWE sama dengan nilai acuan produksi. Estimasi hasil: "+fmt(offerHour)+" BC/jam.";
+ }
+}
+["pwCalcBlocks","pwCalcValue","pwCalcInterval","pwCalcBooster","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
+$("pwCalcName").addEventListener("input",updatePwFarmCalc);
+updatePwFarmCalc();
 })();
