@@ -362,42 +362,20 @@ if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname
 load().then(()=>loadSflMarketFeed({silent:true})).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
 loadAutoEvents();
 
-// Pixel Worlds farm profit calculator: use only values supplied by the player.
+// Compact Pixel Worlds farm BC/hour calculator.
 function updatePwFarmCalc(){
  const number=id=>{const raw=$(id).value.trim();if(!raw)return null;const n=Number(raw.replace(",","."));return Number.isFinite(n)?n:null};
- const blocks=number("pwCalcBlocks"),value=number("pwCalcValue"),hours=number("pwCalcInterval"),booster=number("pwCalcBooster"),offer=number("pwCalcOffer");
- const ids=["pwCalcHarvest","pwCalcHour","pwCalcDay","pwCalcWeek","pwCalcUnit","pwCalcOfferHour"];
+ const blocks=number("pwCalcBlocks"),value=number("pwCalcValue"),hours=number("pwCalcInterval"),offer=number("pwCalcOffer"),verdict=$("pwCalcVerdict");
  const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:2});
- const verdict=$("pwCalcVerdict");
- if(!(blocks>0&&Number.isInteger(blocks)&&value!==null&&value>=0&&hours>0&&booster>0)){
-  ids.forEach(id=>$(id).textContent="—");
-  verdict.textContent="Isi jumlah block, nilai BC per block, dan interval panen yang valid.";
-  return;
- }
- const perHarvest=value*blocks*booster,perHour=perHarvest/hours,perDay=perHour*24,perWeek=perDay*7;
- $("pwCalcHarvest").textContent=fmt(perHarvest)+" BC";
- $("pwCalcHour").textContent=fmt(perHour)+" BC";
- $("pwCalcDay").textContent=fmt(perHour*3)+" BC";
- $("pwCalcWeek").textContent=fmt(perHour*21)+" BC";
- $("pwCalcUnit").textContent=fmt(value*booster)+" BC";
- if(offer===null){
-  $("pwCalcOfferHour").textContent="—";
-  verdict.textContent="Estimasi produksi sudah dihitung. Masukkan harga tawaran PWE per block untuk membandingkannya dengan nilai acuan.";
-  return;
- }
- if(offer<0){$("pwCalcOfferHour").textContent="—";verdict.textContent="Harga tawaran tidak boleh negatif.";return}
- const offerHour=offer*blocks*booster/hours;
- $("pwCalcOfferHour").textContent=fmt(offerHour)+" BC/jam";
- const delta=offer-(value*booster),pct=value*booster>0?(delta/(value*booster))*100:0;
- if(delta<0){
-  verdict.textContent="Tawaran PWE di bawah nilai acuan produksi sebesar "+fmt(Math.abs(delta))+" BC/block ("+fmt(Math.abs(pct))+"%). Estimasi hasil pada harga tawaran: "+fmt(offerHour)+" BC/jam. Pertimbangkan tahan atau cek listing lain.";
- }else if(delta>0){
-  verdict.textContent="Tawaran PWE di atas nilai acuan produksi sebesar "+fmt(delta)+" BC/block ("+fmt(pct)+"%). Estimasi hasil pada harga tawaran: "+fmt(offerHour)+" BC/jam.";
- }else{
-  verdict.textContent="Tawaran PWE sama dengan nilai acuan produksi. Estimasi hasil: "+fmt(offerHour)+" BC/jam.";
- }
+ if(!(blocks>0&&Number.isInteger(blocks)&&value!==null&&value>=0&&hours>0)){$("pwCalcHour").textContent="— BC/jam";$("pwCalcOfferHour").textContent="— BC/jam";verdict.textContent="Masukkan jumlah block, nilai panen, dan waktu panen yang valid.";return}
+ const rate=blocks*value/hours;$("pwCalcHour").textContent=fmt(rate)+" BC/jam";
+ if(offer===null){$("pwCalcOfferHour").textContent="— BC/jam";verdict.textContent="Produksi sudah dihitung. Isi tawaran PWE untuk membandingkan harganya.";return}
+ if(offer<0){$("pwCalcOfferHour").textContent="— BC/jam";verdict.textContent="Tawaran tidak boleh negatif.";return}
+ const offerRate=blocks*offer/hours,delta=offer-value;$("pwCalcOfferHour").textContent=fmt(offerRate)+" BC/jam";
+ if(delta<0)verdict.textContent="Tawaran lebih rendah "+fmt(Math.abs(delta))+" BC/block dari nilai panen. Pertimbangkan tahan atau cek tawaran lain.";
+ else if(delta>0)verdict.textContent="Tawaran lebih tinggi "+fmt(delta)+" BC/block dari nilai panen.";
+ else verdict.textContent="Tawaran sama dengan nilai panen per block.";
 }
-["pwCalcBlocks","pwCalcValue","pwCalcInterval","pwCalcBooster","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
-$("pwCalcName").addEventListener("input",updatePwFarmCalc);
+["pwCalcBlocks","pwCalcValue","pwCalcInterval","pwCalcOffer"].forEach(id=>$(id).addEventListener("input",updatePwFarmCalc));
 updatePwFarmCalc();
 })();
