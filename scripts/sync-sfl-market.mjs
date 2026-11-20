@@ -38,10 +38,9 @@ try {
     history = previous.history.filter(x => x && typeof x.date === "string" && x.prices && typeof x.prices === "object");
   }
 } catch {}
-history = history.filter(x => x.date !== date);
 history.push(snapshot);
-history.sort((a, b) => a.date.localeCompare(b.date));
-history = history.slice(-30);
+history.sort((a, b) => Date.parse(a.observedAt) - Date.parse(b.observedAt));
+history = history.slice(-360);
 
 const feed = {
   type: "sfl-market-feed",
@@ -55,4 +54,4 @@ const feed = {
   history
 };
 await fs.writeFile("market-feed.json", JSON.stringify(feed, null, 2) + "\n");
-console.log(`Saved ${Object.keys(cleanPrices).length} P2P item prices; ${history.length} daily snapshots retained.`);
+console.log(`Saved ${Object.keys(cleanPrices).length} P2P item prices; ${history.length} snapshots retained (up to 30 days at 2-hour intervals).`);
