@@ -88,14 +88,14 @@ footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
 <div class="market-columns"><section class="market-list"><h3>↗ Harga naik</h3><div class="empty">Belum ada data harga valid.</div></section><section class="market-list"><h3>↘ Harga turun</h3><div class="empty">Belum ada data harga valid.</div></section></div>
 <details class="card backup-card pw-calc" id="pwFarmCalc">
 <summary>🌾 Hitung tawaran PWE</summary>
-<p class="muted small">Masukkan jumlah block dan tawaran harga dari PWE.</p>
+<p class="muted small">Masukkan jumlah seed dan tawaran harga dari PWE.</p>
 <div class="pw-calc-fields">
-<label>Jumlah block<input id="pwCalcBlocks" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 200"></label>
-<label>Tawaran PWE per block (BC)<input id="pwCalcOffer" type="number" min="0" step="any" inputmode="decimal" placeholder="Contoh: 5"></label>
+<label>Jumlah seed<input id="pwCalcSeeds" type="number" min="1" step="1" inputmode="numeric" placeholder="Contoh: 200"></label>
+<label>Tawaran PWE per seed (BC)<input id="pwCalcOffer" type="number" min="0" step="any" inputmode="decimal" placeholder="Contoh: 5"></label>
 </div>
 <div class="pw-calc-results" style="grid-template-columns:1fr"><div><span>Total nilai tawaran</span><strong id="pwCalcTotalOffer">— BC</strong></div></div>
-<p id="pwCalcVerdict" class="pw-calc-verdict" role="status" aria-live="polite">Masukkan jumlah block dan tawaran per block.</p>
-<p class="data-note">Rumus: jumlah block × tawaran PWE per block.</p>
+<p id="pwCalcVerdict" class="pw-calc-verdict" role="status" aria-live="polite">Masukkan jumlah seed dan tawaran per seed.</p>
+<p class="data-note">Rumus: jumlah seed × tawaran PWE per seed.</p>
 </details>
 <p class="data-note">Pasar: Pixel Worlds Exchange · Mata uang: BC. Harga tidak ditampilkan sebelum sumber PWE valid tersedia.</p>
 </section>
