@@ -49,7 +49,8 @@ function renderMarketReports(){
    if(p.p2pPrice!=null&&!olderPrices.has(String(p.item||"").toLowerCase()))olderPrices.set(String(p.item||"").toLowerCase(),Number(p.p2pPrice));
   }
  }
- const items=(latest.marketPrices||[]).filter(p=>p.p2pPrice!=null).map(p=>{
+ const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey"]);
+ const items=(latest.marketPrices||[]).filter(p=>p.p2pPrice!=null&&sellableItems.has(String(p.item||""))).map(p=>{
   const before=olderPrices.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
   const trend=before==null?"unknown":now>before?"up":now<before?"down":"stable";
   const change=before!=null&&before!==0?((now-before)/before*100):null;
