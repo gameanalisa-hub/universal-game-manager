@@ -34,10 +34,21 @@
       "claimedAt": "2026-11-21",
       "source": "user-provided-claim-screenshot",
       "items": [
-        { "item": "Rhubarb", "quantity": 200, "amount": 0.0807 },
-        { "item": "Tomato", "quantity": 100, "amount": 0.5407 }
+        {
+          "item": "Rhubarb",
+          "quantity": 200,
+          "amount": 0.0807
+        },
+        {
+          "item": "Tomato",
+          "quantity": 100,
+          "amount": 0.5407
+        }
       ],
       "note": "Total 0.6215 FLOWER sesuai konfirmasi pengguna; angka per item pada screenshot berjumlah 0.6214 FLOWER, selisih 0.0001 dipertahankan sebagai pembulatan total terkonfirmasi."
     }
-  ]
+  ],
+  "walletBalance": 6.8548,
+  "balanceSource": "user-confirmed-in-game-balance",
+  "balanceUpdatedAt": "2026-11-21"
 }
