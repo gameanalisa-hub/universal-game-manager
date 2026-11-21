@@ -2,7 +2,7 @@
   "type": "sfl-transaction-feed",
   "schemaVersion": 1,
   "currency": "FLOWER",
-  "updatedAt": "2026-11-20T20:40:00+07:00",
+  "updatedAt": "2026-11-21T09:00:00+07:00",
   "transactions": [
     {
       "id": "sfl-claim-onion-146-2026-11-20",
@@ -23,6 +23,22 @@
       "status": "sold",
       "soldAt": "2026-11-20",
       "source": "user-provided-transaction"
+    },
+    {
+      "id": "sfl-claim-rhubarb-tomato-300-2026-11-21",
+      "item": "Rhubarb + Tomato",
+      "quantity": 300,
+      "amount": 0.6215,
+      "currency": "FLOWER",
+      "currency": "FLOWER",
+      "status": "claimed",
+      "claimedAt": "2026-11-21",
+      "source": "user-provided-claim-screenshot",
+      "items": [
+        { "item": "Rhubarb", "quantity": 200, "amount": 0.0807 },
+        { "item": "Tomato", "quantity": 100, "amount": 0.5407 }
+      ],
+      "note": "Total 0.6215 FLOWER sesuai konfirmasi pengguna; angka per item pada screenshot berjumlah 0.6214 FLOWER, selisih 0.0001 dipertahankan sebagai pembulatan total terkonfirmasi."
     }
   ]
 }
