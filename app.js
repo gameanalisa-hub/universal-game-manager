@@ -48,14 +48,14 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason)||priceReports[0]:priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason};
+ const latest=reports[0],balanceReport=reports.find(r=>r.walletBalance!=null),priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason)||priceReports[0]:priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason};
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
  for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string")transactionMap.set(tx.id,tx);
  const transactions=[...transactionMap.values()].sort((a,b)=>String(b.claimedAt||"").localeCompare(String(a.claimedAt||"")));
- const actual=latest.walletBalance!=null,balance=actual?latest.walletBalance:(transactions.length?4.632+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0):latest.confirmedReceipts),target=Number(latest.target||410);
+ const actual=!!balanceReport,balance=actual?balanceReport.walletBalance:(transactions.length?4.632+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0):latest.confirmedReceipts),target=Number((balanceReport||latest).target||410);
  const remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
  const targetHtml='<section class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Perkembangan target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi penerimaan")+'</span></div><div class="recurring-next"><strong>'+fmt(balance)+' / '+fmt(target)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Tersisa "+fmt(remaining)+" FLOWER")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.632 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</section>';
  const olderPrices=new Map();
