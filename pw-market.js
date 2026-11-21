@@ -3,6 +3,7 @@
 const DB="ugm_pw_module", STORE="state", KEY="pixel-worlds-market-data", MAX=200;
 const $=id=>document.getElementById(id);
 let snapshots=[];
+let activePeriod=24;
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:6});
 const dbOpen=()=>new Promise((resolve,reject)=>{
@@ -66,6 +67,19 @@ function comparisons(){
   return {...entry,before,change,trend:change==null?"unknown":change>0?"up":change<0?"down":"stable"};
  });
 }
+function periodAnalysis(hours){
+ const sorted=[...snapshots].sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
+ if(sorted.length<2)return {rows:[],latest:null,baseline:null,reason:"Butuh minimal dua snapshot."};
+ const latest=sorted[sorted.length-1], cutoff=Date.parse(latest.observedAt)-hours*3600000;
+ const baseline=[...sorted].reverse().find(s=>Date.parse(s.observedAt)<=cutoff);
+ if(!baseline)return {rows:[],latest,baseline:null,reason:"Belum ada snapshot yang cukup lama untuk pembanding periode ini."};
+ const baseMap=new Map((baseline.entries||[]).map(x=>[x.item.toLowerCase(),x.price]));
+ const rows=(latest.entries||[]).flatMap(entry=>{
+  const before=baseMap.get(entry.item.toLowerCase());
+  return before>0?[{item:entry.item,price:entry.price,before,change:(entry.price-before)/before*100}]:[];
+ }).sort((a,b)=>Math.abs(b.change)-Math.abs(a.change));
+ return {rows,latest,baseline,reason:rows.length?"":"Tidak ada item yang sama pada kedua snapshot."};
+}
 function render(){
  const all=comparisons(),rising=all.filter(x=>x.trend==="up").sort((a,b)=>b.change-a.change),falling=all.filter(x=>x.trend==="down").sort((a,b)=>a.change-b.change);
  const card=x=>'<article class="item"><div class="item-main"><b>'+esc(x.item)+'</b><div class="pw-market-meta">Sebelumnya: '+fmt(x.before)+' BC · Sekarang: '+fmt(x.price)+' BC</div></div><div class="item-actions"><strong class="'+(x.change>=0?"pw-trend-up":"pw-trend-down")+'">'+(x.change>0?"+":"")+x.change.toFixed(2)+'%</strong></div></article>';
@@ -76,7 +90,17 @@ function render(){
  $("pwMarketHistory").innerHTML=history.length?history.map(s=>'<article class="item"><div class="item-main"><b>'+new Date(s.observedAt).toLocaleString("id-ID")+'</b><div class="pw-market-meta">'+s.entries.length+' item · '+esc(s.sourceLabel||"Input manual")+'</div></div><div class="item-actions"><button class="btn danger" type="button" data-pw-market-delete="'+esc(s.id)+'">Hapus</button></div></article>').join(""):'<div class="empty">Riwayat masih kosong.</div>';
  const latest=history[0];
  $("pwMarketStatus").textContent=latest?"Snapshot terakhir: "+new Date(latest.observedAt).toLocaleString("id-ID")+" · "+latest.entries.length+" item. Tren dibandingkan dengan snapshot sebelumnya yang memiliki item sama.":"Belum ada snapshot harga PWE.";
+ const analysis=periodAnalysis(activePeriod),label=activePeriod===24?"24 jam":activePeriod===168?"7 hari":"30 hari";
+ document.querySelectorAll("[data-pw-period]").forEach(b=>b.classList.toggle("active",Number(b.dataset.pwPeriod)===activePeriod));
+ $("pwAnalyticsCaption").textContent=analysis.baseline?"Perbandingan "+label+": "+new Date(analysis.baseline.observedAt).toLocaleString("id-ID")+" → "+new Date(analysis.latest.observedAt).toLocaleString("id-ID")+".":analysis.reason+" Impor snapshot berkala untuk membuka analisis "+label+".";
+ const movers=analysis.rows;
+ $("pwAnalyticsList").innerHTML=movers.length?movers.map(x=>'<article class="item"><div class="item-main"><b>'+esc(x.item)+'</b><div class="pw-market-meta">'+fmt(x.before)+' → '+fmt(x.price)+' BC</div></div><div class="item-actions"><strong class="'+(x.change>=0?"pw-trend-up":"pw-trend-down")+'">'+(x.change>0?"+":"")+x.change.toFixed(2)+'%</strong></div></article>').join(""):'<div class="empty">Belum ada perbandingan yang valid untuk periode ini.</div>';
+ const sharp=movers.filter(x=>Math.abs(x.change)>=20);
+ $("pwAnomalyList").innerHTML=sharp.length?sharp.map(x=>'<article class="item"><div class="item-main"><b>'+esc(x.item)+'</b><div class="pw-market-meta">Perubahan tajam pada periode terpilih</div></div><div class="item-actions"><strong class="'+(x.change>=0?"pw-trend-up":"pw-trend-down")+'">'+(x.change>0?"+":"")+x.change.toFixed(2)+'%</strong></div></article>').join(""):'<div class="empty">Tidak ada perubahan ≥20% yang terdeteksi pada periode ini.</div>';
+ $("pwAnomalyNote").textContent=sharp.length?"Sinyal perubahan tajam, bukan bukti manipulasi harga. Periksa volume, jumlah penawaran, dan sumber harga sebelum mengambil keputusan.":"Ambang sinyal: perubahan absolut minimal 20% dibanding snapshot pembanding.";
 }
+document.querySelectorAll("[data-pw-period]").forEach(button=>button.addEventListener("click",()=>{activePeriod=Number(button.dataset.pwPeriod);render()}));
+
 $("pwMarketImportBtn").addEventListener("click",async()=>{
  const raw=$("pwMarketImportText").value.trim();if(!raw){$("pwMarketStatus").textContent="Tempel JSON atau CSV terlebih dahulu.";return}
  try{
