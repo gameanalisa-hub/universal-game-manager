@@ -7,7 +7,7 @@ const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&
 const fmt=n=>Number(n).toLocaleString("id-ID",{maximumFractionDigits:6});
 const dbOpen=()=>new Promise((resolve,reject)=>{
  const req=indexedDB.open(DB,1);
- req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(STORE))req.result.createObjectStore(STORE)};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
 });
 async function readStore(){
  const db=await dbOpen();
