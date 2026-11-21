@@ -79,7 +79,7 @@ footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
 .season-select{width:100%;max-width:360px;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;margin:6px 0 10px}.season-select:focus{outline:2px solid var(--accent);outline-offset:2px}
 
 .pw-market-source{margin:10px 0}.pw-source-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.pw-source-grid>div{display:grid;gap:5px;padding:10px;border:1px solid #36577d;border-radius:10px;background:#102139}.pw-source-grid b{font-size:12px}.pw-source-grid span{font-size:11px;color:var(--muted)}.pw-market-import textarea{width:100%;min-height:150px;background:#0b1423;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px;font:12px/1.5 ui-monospace,monospace}.pw-market-price{display:flex;justify-content:space-between;gap:8px;align-items:center}.pw-market-price strong{font-size:15px}.pw-market-meta{font-size:11px;color:var(--muted)}.pw-trend-up{color:var(--green)}.pw-trend-down{color:var(--red)}@media(max-width:560px){.pw-source-grid{grid-template-columns:1fr}.pw-market-price{align-items:flex-start;flex-direction:column}}
-</style></head>
+.pw-period-switch{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.pw-period-switch .btn.active{background:#294b80;border-color:#527fc7;color:white}.pw-analytics{margin:12px 0}.pw-analytics .section-head{margin:10px 0}.pw-analytics .empty{padding:14px;font-size:12px}</style></head>
 <body>
 <header><div class="brand"><div class="logo">UG</div><div><h1>Universal Game Manager</h1><p>Local-first · Multi-game foundation</p></div></div><div class="game-switch" role="group" aria-label="Pilih game"><button class="btn primary" id="gamePixelBtn" type="button">Pixel Worlds</button><button class="btn" id="gameSunflowerBtn" type="button">🌻 Sunflower Land</button></div></header>
 <main id="pixelMain">
@@ -97,6 +97,17 @@ footer{max-width:1050px;margin:auto;padding:0 16px 25px;color:var(--muted);font-
  </div>
  <p class="data-note">Data manual dicatat sebagai input pengguna, bukan kutipan API resmi. Periksa item, satuan BC, dan waktu sebelum mengimpor.</p>
 </div>
+<section class="card backup-card pw-analytics">
+ <div class="section-head"><h3>Analisis tren harga</h3><span class="small muted">Berdasarkan snapshot</span></div>
+ <div class="pw-period-switch" role="group" aria-label="Periode analisis">
+  <button class="btn active" type="button" data-pw-period="24">24 jam</button><button class="btn" type="button" data-pw-period="168">7 hari</button><button class="btn" type="button" data-pw-period="720">30 hari</button>
+ </div>
+ <p class="data-note" id="pwAnalyticsCaption">Impor snapshot berkala untuk mulai melihat tren.</p>
+ <div id="pwAnalyticsList" class="list"><div class="empty">Belum ada perbandingan periode.</div></div>
+ <div class="section-head"><h3>Sinyal perubahan tajam</h3></div>
+ <div id="pwAnomalyList" class="list"><div class="empty">Belum ada sinyal.</div></div>
+ <p class="data-note" id="pwAnomalyNote">Ambang sinyal: perubahan absolut minimal 20% dibanding snapshot pembanding.</p>
+</section>
 <div class="market-columns">
  <section class="market-list"><h3>↗ Harga naik</h3><div id="pwRisingList" class="list"><div class="empty">Belum ada dua snapshot untuk dibandingkan.</div></div></section>
  <section class="market-list"><h3>↘ Harga turun</h3><div id="pwFallingList" class="list"><div class="empty">Belum ada dua snapshot untuk dibandingkan.</div></div></section>
