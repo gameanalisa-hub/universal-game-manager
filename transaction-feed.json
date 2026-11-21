@@ -30,7 +30,6 @@
       "quantity": 300,
       "amount": 0.6215,
       "currency": "FLOWER",
-      "currency": "FLOWER",
       "status": "claimed",
       "claimedAt": "2026-11-21",
       "source": "user-provided-claim-screenshot",
