@@ -172,7 +172,7 @@ async function loadSflTransactionFeed(options={}) {
   const total=transactions.reduce((sum,t)=>sum+t.amount,4.632);
   const report={
    type:"sfl-market-report",schemaVersion:1,id:"sfl-transactions-"+String(feed.updatedAt||feed.updatedDate||"latest").slice(0,10),
-   observedAt:feed.updatedAt||new Date().toISOString(),currency:"FLOWER",walletBalance:null,
+   observedAt:feed.updatedAt||new Date().toISOString(),currency:"FLOWER",walletBalance:Number.isFinite(feed.walletBalance)?feed.walletBalance:null,
    confirmedReceipts:total,target:410,marketPrices,transactions,season:prior?.season||sflState.activeSeason||null,
    summary:"Penerimaan historis estimasi 4.632 FLOWER ditambah transaksi claimed dan penjualan dari Public Transaction Feed. Bukan saldo wallet.",
    dataGaps:["Saldo wallet aktual belum diverifikasi.","Feed transaksi bersifat publik."]
