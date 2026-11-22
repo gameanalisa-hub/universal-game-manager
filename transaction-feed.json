@@ -2,7 +2,7 @@
   "type": "sfl-transaction-feed",
   "schemaVersion": 1,
   "currency": "FLOWER",
-  "updatedAt": "2026-11-22T09:45:00+07:00",
+  "updatedAt": "2026-11-22T09:00:00+07:00",
   "transactions": [
     {
       "id": "sfl-claim-onion-146-2026-11-20",
@@ -58,7 +58,7 @@
       "source": "user-provided-text"
     }
   ],
-  "walletBalance": 6.8548,
+  "walletBalance": 7.8845,
   "balanceSource": "user-confirmed-in-game-balance",
-  "balanceUpdatedAt": "2026-11-21"
+  "balanceUpdatedAt": "2026-11-22"
 }
