@@ -1,4 +1,4 @@
-const CACHE="ugm-pw-v46";
+const CACHE="ugm-pw-v47";
 const FILES=["./","./index.html","./app.js?v=45","./pw-market.js?v=2","./manifest.webmanifest"];
 
 self.addEventListener("install",event=>{
