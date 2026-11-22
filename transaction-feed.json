@@ -2,7 +2,7 @@
   "type": "sfl-transaction-feed",
   "schemaVersion": 1,
   "currency": "FLOWER",
-  "updatedAt": "2026-11-21T09:00:00+07:00",
+  "updatedAt": "2026-11-22T09:45:00+07:00",
   "transactions": [
     {
       "id": "sfl-claim-onion-146-2026-11-20",
@@ -46,6 +46,16 @@
         }
       ],
       "note": "Total 0.6215 FLOWER sesuai konfirmasi pengguna; angka per item pada screenshot berjumlah 0.6214 FLOWER, selisih 0.0001 dipertahankan sebagai pembulatan total terkonfirmasi."
+    },
+    {
+      "id": "sfl-sale-soybean-600-2026-11-22",
+      "item": "Soybean",
+      "quantity": 600,
+      "amount": 1.0297,
+      "currency": "FLOWER",
+      "status": "sold",
+      "soldAt": "2026-11-22",
+      "source": "user-provided-text"
     }
   ],
   "walletBalance": 6.8548,
