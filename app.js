@@ -145,9 +145,9 @@ async function loadSflMarketFeed(options={}){
    const report={
     type:"sfl-market-report",schemaVersion:1,id:"sfl-market-"+(snapshot.observedAt||snapshot.date),
     observedAt:snapshot.observedAt||feed.generatedAt,currency:"FLOWER",
-    season:SFL_SEASONS.includes(snapshot.season)?snapshot.season:(snapshot===latestSnapshot&&SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null),
-    seasonVerified:SFL_SEASONS.includes(snapshot.season)||(snapshot===latestSnapshot&&SFL_SEASONS.includes(sflState.activeSeason)),
-    seasonAssignmentSource:SFL_SEASONS.includes(snapshot.season)?"feed":(snapshot===latestSnapshot&&SFL_SEASONS.includes(sflState.activeSeason)?"user-selected-current-season":null),
+    season:SFL_SEASONS.includes(snapshot.season)?snapshot.season:null,
+    seasonVerified:SFL_SEASONS.includes(snapshot.season),
+    seasonAssignmentSource:SFL_SEASONS.includes(snapshot.season)?"feed":null,
     walletBalance:null,confirmedReceipts:4.632,target:410,
     marketPrices,transactions:[],
     summary:"Snapshot harga P2P SFL.world · "+marketPrices.length+" item. Harga P2P bukan last sale atau floor.",
