@@ -59,6 +59,7 @@ function comparisons(){
  const sorted=[...snapshots].sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
  const latest=sorted[sorted.length-1], previousByItem=new Map();
  for(let i=sorted.length-2;i>=0;i--){
+  if(sorted[i].source!==latest?.source)continue;
   for(const entry of sorted[i].entries||[])if(!previousByItem.has(entry.item.toLowerCase()))previousByItem.set(entry.item.toLowerCase(),entry.price);
  }
  return (latest?.entries||[]).map(entry=>{
@@ -71,7 +72,7 @@ function periodAnalysis(hours){
  const sorted=[...snapshots].sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
  if(sorted.length<2)return {rows:[],latest:null,baseline:null,reason:"Butuh minimal dua snapshot."};
  const latest=sorted[sorted.length-1], cutoff=Date.parse(latest.observedAt)-hours*3600000;
- const baseline=[...sorted].reverse().find(s=>Date.parse(s.observedAt)<=cutoff);
+ const baseline=[...sorted].reverse().find(s=>Date.parse(s.observedAt)<=cutoff&&s.source===latest.source);
  if(!baseline)return {rows:[],latest,baseline:null,reason:"Belum ada snapshot yang cukup lama untuk pembanding periode ini."};
  const baseMap=new Map((baseline.entries||[]).map(x=>[x.item.toLowerCase(),x.price]));
  const rows=(latest.entries||[]).flatMap(entry=>{
@@ -89,7 +90,8 @@ function render(){
  const history=[...snapshots].sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  $("pwMarketHistory").innerHTML=history.length?history.map(s=>'<article class="item"><div class="item-main"><b>'+new Date(s.observedAt).toLocaleString("id-ID")+'</b><div class="pw-market-meta">'+s.entries.length+' item · '+esc(s.sourceLabel||"Input manual")+'</div></div><div class="item-actions"><button class="btn danger" type="button" data-pw-market-delete="'+esc(s.id)+'">Hapus</button></div></article>').join(""):'<div class="empty">Riwayat masih kosong.</div>';
  const latest=history[0];
- $("pwMarketStatus").textContent=latest?"Snapshot terakhir: "+new Date(latest.observedAt).toLocaleString("id-ID")+" · "+latest.entries.length+" item. Tren dibandingkan dengan snapshot sebelumnya yang memiliki item sama.":"Belum ada snapshot harga PWE.";
+ const ageMs=latest?Math.max(0,Date.now()-Date.parse(latest.observedAt)):null,ageHours=ageMs==null?null:ageMs/3600000,ageLabel=ageHours==null?null:ageHours<1?Math.round(ageHours*60)+" menit lalu":ageHours<48?Math.floor(ageHours)+" jam lalu":Math.floor(ageHours/24)+" hari lalu";
+ $("pwMarketStatus").textContent=latest?"Snapshot terakhir: "+new Date(latest.observedAt).toLocaleString("id-ID")+" ("+ageLabel+") · "+latest.entries.length+" item · sumber: "+(latest.sourceLabel||"manual")+(ageHours>24?" · DATA LAMA, impor snapshot baru untuk memperbarui tren.":". Tren hanya dibandingkan dengan snapshot dari sumber yang sama."):"Belum ada snapshot harga PWE.";
  const analysis=periodAnalysis(activePeriod),label=activePeriod===24?"24 jam":activePeriod===168?"7 hari":"30 hari";
  document.querySelectorAll("[data-pw-period]").forEach(b=>b.classList.toggle("active",Number(b.dataset.pwPeriod)===activePeriod));
  $("pwAnalyticsCaption").textContent=analysis.baseline?"Perbandingan "+label+": "+new Date(analysis.baseline.observedAt).toLocaleString("id-ID")+" → "+new Date(analysis.latest.observedAt).toLocaleString("id-ID")+".":analysis.reason+" Impor snapshot berkala untuk membuka analisis "+label+".";
@@ -126,9 +128,10 @@ async function init(){
  try{
   const saved=await readStore();
   snapshots=Array.isArray(saved.history)?saved.history.filter(s=>s&&typeof s.id==="string"&&Number.isFinite(Date.parse(s.observedAt))&&Array.isArray(s.entries)): [];
-  $("pwAutoSourceStatus").textContent="Belum tersedia: belum ada API PWE publik yang terverifikasi. Tidak ada endpoint tebakan yang dipanggil.";
+  $("pwAutoSourceStatus").textContent="Belum tersedia: belum ada API PWE publik yang terverifikasi. Tidak ada endpoint tebakan yang dipanggil. Mode manual tetap aktif dan menyimpan sumber serta waktu snapshot.";
   render();
  }catch(error){$("pwMarketStatus").textContent="Penyimpanan market tidak tersedia: "+error.message}
 }
+window.addEventListener("ugm:data-restored",async()=>{try{const saved=await readStore();snapshots=Array.isArray(saved.history)?saved.history.filter(s=>s&&typeof s.id==="string"&&Number.isFinite(Date.parse(s.observedAt))&&Array.isArray(s.entries)):[];render()}catch(error){$("pwMarketStatus").textContent="Market PWE gagal dimuat ulang setelah restore: "+error.message}});
 init();
 })();
