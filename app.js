@@ -10,6 +10,7 @@ const SFL_SEASON_CROPS={
  Winter:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Wheat","Turnip","Kale","Lemon","Blueberry","Apple","Grape","Rice","Olive"]
 };
 const SFL_SEASONS=["Spring","Summer","Autumn","Winter"];
+const SFL_HISTORICAL_BASELINE=4.632;
 
 let state=blank(),sflState=blankSfl(),scanCandidates=[],autoEvents=[];
 const notice=msg=>{$("notice").textContent=msg};
@@ -48,16 +49,18 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],balanceReport=reports.find(r=>r.walletBalance!=null),priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason)||priceReports[0]:priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason};
+ const latest=reports[0],balanceReport=reports.find(r=>r.walletBalance!=null),priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,latestPrice=(activeSeason?priceReports.find(r=>r.season===activeSeason):priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason};
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
  for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string")transactionMap.set(tx.id,tx);
- const transactions=[...transactionMap.values()].sort((a,b)=>String(b.claimedAt||"").localeCompare(String(a.claimedAt||"")));
- const actual=!!balanceReport,balance=actual?balanceReport.walletBalance:(transactions.length?4.632+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0):latest.confirmedReceipts),target=Number((balanceReport||latest).target||410);
- const remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
- const targetHtml='<section class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Perkembangan target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo aktual":"Estimasi penerimaan")+'</span></div><div class="recurring-next"><strong>'+fmt(balance)+' / '+fmt(target)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Tersisa "+fmt(remaining)+" FLOWER")+'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</small></div>'+(actual?"":'<p class="data-note">4.632 FLOWER adalah estimasi penerimaan historis, bukan saldo wallet terverifikasi.</p>')+'</section>';
+  const transactions=[...transactionMap.values()].sort((a,b)=>String(b.soldAt||b.claimedAt||"").localeCompare(String(a.soldAt||a.claimedAt||"")));
+  const estimatedReceipts=SFL_HISTORICAL_BASELINE+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
+  const actual=!!balanceReport,balance=actual?Number(balanceReport.walletBalance):(transactions.length?estimatedReceipts:latest.confirmedReceipts),target=Number((balanceReport||latest).target||410);
+  const reconciliationDelta=actual?Number((balance-estimatedReceipts).toFixed(8)):null;
+  const reconciliationHtml=actual&&transactions.length&&Math.abs(reconciliationDelta)>=0.00005?'<p class="data-note">Rekonsiliasi: saldo wallet terkonfirmasi '+fmt(balance)+' FLOWER; baseline historis + transaksi tercatat '+fmt(estimatedReceipts)+' FLOWER. Selisih '+(reconciliationDelta>0?"+":"")+fmt(reconciliationDelta)+' FLOWER belum terjelaskan oleh catatan transaksi. Saldo wallet tetap menjadi acuan target.</p>':(actual?'<p class="data-note">Saldo wallet terkonfirmasi digunakan sebagai acuan target. Catatan transaksi ditampilkan terpisah.</p>':'<p class="data-note">Estimasi dihitung dari baseline historis 4.632 FLOWER ditambah transaksi tercatat. Ini bukan saldo wallet terverifikasi.</p>');
+  const targetHtml='<section class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Perkembangan target 410 FLOWER</h3><span class="recurring-badge">'+(actual?"Saldo wallet terkonfirmasi":"Estimasi penerimaan") +'</span></div><div class="recurring-next"><strong>'+fmt(balance)+' / '+fmt(target)+' FLOWER</strong><small>'+(remaining==null?"Saldo belum diketahui":"Tersisa "+fmt(remaining)+" FLOWER") +'</small><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><small>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai") +'</small></div></section>'+reconciliationHtml;
  const olderPrices=new Map();
  for(const report of priceReports){
   if(report===latestPrice||(report.season||null)!==(latestPrice.season||null))continue;
@@ -83,7 +86,7 @@ function renderMarketReports(){
  const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span><span>Perubahan<strong>'+(p.change==null?"Belum ada pembanding":(p.change>0?"+":"")+p.change.toFixed(2)+"%")+'</strong></span></div></div></article>').join(""):'<div class="empty">Belum ada harga P2P yang tersedia.</div>';
  const observed=latestPrice.observedAt?new Date(latestPrice.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
  const seasonHistoryHtml=seasonHistory.map(x=>'<span class="recurring-badge">'+x.season+' · '+(x.report?new Date(x.report.observedAt).toLocaleDateString("id-ID"):"Belum ada data")+'</span>').join(" ");
- const seasonNotice=activeSeason?(latestPrice.observedAt?"Data harga "+activeSeason+" · tren hanya dibandingkan dengan snapshot musim yang sama.":"Belum ada snapshot harga untuk "+activeSeason+". Perbarui feed untuk mulai merekam musim ini."):"Pilih musim sesuai kalender di dalam game untuk memfilter tanaman dan tren harga.";
+ const seasonNotice=activeSeason?(latestPrice.observedAt?"Data harga "+activeSeason+" · tren hanya dibandingkan dengan snapshot yang secara eksplisit tercatat pada musim ini.":"Belum ada snapshot harga yang terverifikasi untuk "+activeSeason+". Snapshot musim lain tidak digunakan sebagai pembanding. Perbarui feed untuk mulai merekam musim ini."):"Pilih musim sesuai kalender di dalam game untuk memfilter tanaman dan tren harga.";
  const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">'+esc(tx.status==="sold"?"Terjual":"Claimed")+'</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.soldAt||tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
  root.innerHTML=targetHtml+'<p class="data-note">'+esc(seasonNotice)+'</p><div class="backup-actions">'+seasonHistoryHtml+'</div><section class="section-head"><h3>Riwayat transaksi</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Keputusan Jual Musim Ini</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Status jual ditentukan dari perubahan harga P2P pada dua snapshot terbaru: naik = Layak Dijual, stabil = Tahan Dulu, turun = Jangan Dijual Dulu. Ini indikator tren harga, bukan jaminan barang pasti terjual.</p>';
 }
@@ -169,13 +172,13 @@ async function loadSflTransactionFeed(options={}) {
   const transactions=feed.transactions.filter(t=>t&&typeof t.id==="string"&&t.id&&typeof t.item==="string"&&Number.isFinite(t.quantity)&&t.quantity>0&&Number.isFinite(t.amount)&&t.amount>=0&&t.currency==="FLOWER"&&["claimed","sold"].includes(t.status));
   const prior=[...(sflState.marketReports||[])].sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt))[0];
   const marketPrices=prior&&Array.isArray(prior.marketPrices)?prior.marketPrices:[];
-  const total=transactions.reduce((sum,t)=>sum+t.amount,4.632);
+  const total=transactions.reduce((sum,t)=>sum+t.amount,SFL_HISTORICAL_BASELINE);
   const report={
    type:"sfl-market-report",schemaVersion:1,id:"sfl-transactions-"+String(feed.updatedAt||feed.updatedDate||"latest").slice(0,10),
    observedAt:feed.updatedAt||new Date().toISOString(),currency:"FLOWER",walletBalance:Number.isFinite(feed.walletBalance)?feed.walletBalance:null,
    confirmedReceipts:total,target:410,marketPrices,transactions,season:prior?.season||sflState.activeSeason||null,
-   summary:"Penerimaan historis estimasi 4.632 FLOWER ditambah transaksi claimed dan penjualan dari Public Transaction Feed. Bukan saldo wallet.",
-   dataGaps:["Saldo wallet aktual belum diverifikasi.","Feed transaksi bersifat publik."]
+   summary:"Saldo wallet berasal dari konfirmasi pengguna; estimasi penerimaan dihitung terpisah dari baseline historis dan transaksi feed.",
+   dataGaps:["Selisih saldo wallet dan estimasi transaksi perlu rekonsiliasi bila keduanya berbeda.","Feed transaksi bersifat publik."]
   };
   sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
   const index=sflState.marketReports.findIndex(x=>x.id===report.id);
