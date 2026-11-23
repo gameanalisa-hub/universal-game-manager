@@ -54,7 +54,7 @@ function renderMarketReports(){
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:priceReports.find(r=>r.season===season)}));
  const transactionMap=new Map();
- for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string")transactionMap.set(tx.id,tx);
+ for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string"&&!transactionMap.has(tx.id))transactionMap.set(tx.id,tx);
   const transactions=[...transactionMap.values()].sort((a,b)=>String(b.soldAt||b.claimedAt||"").localeCompare(String(a.soldAt||a.claimedAt||"")));
   const estimatedReceipts=SFL_HISTORICAL_BASELINE+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
   const actual=!!balanceReport,balance=actual?Number(balanceReport.walletBalance):(transactions.length?estimatedReceipts:latest.confirmedReceipts),target=Number((balanceReport||latest).target||410);
