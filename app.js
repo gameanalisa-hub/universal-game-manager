@@ -50,7 +50,7 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestPrice=(activeSeason?verifiedPrices.find(r=>r.season===activeSeason):priceReports[0])||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
+ const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestVerifiedPrice=(activeSeason?verifiedPrices.find(r=>r.season===activeSeason):priceReports[0]),latestPrice=latestVerifiedPrice||priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
@@ -83,7 +83,7 @@ function renderMarketReports(){
   const vsBaseline=baseline!=null&&baseline>0?(now-baseline)/baseline*100:null;
   const recentHigh=history.length>=4?Math.max(...history.slice(0,-1).map(x=>x.price)):history.length>=3?Math.max(...history.slice(0,-1).map(x=>x.price)):null;
   const consecutiveDrops=previous!=null&&prior!=null&&now<previous&&previous<prior;
-  let signal="unknown",trendLabel="Belum cukup data",reason="Butuh minimal 3 snapshot valid dari musim yang sama.";
+  let signal="unknown",trendLabel="Belum cukup data",reason=latestPrice.seasonVerified===true?"Butuh minimal 3 snapshot valid dari musim yang sama.":"Harga P2P terbaru ditampilkan, tetapi snapshot belum diverifikasi untuk musim aktif. Verifikasi rentang musim sebelum memakai sinyal jual.";
   if(history.length>=3){
    const atLocalPeak=recentHigh!=null&&now>=recentHigh&&vsBaseline!=null&&vsBaseline>=1;
    const sharpDrop=change!=null&&change<=-2&&consecutiveDrops;
