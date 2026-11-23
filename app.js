@@ -150,7 +150,7 @@ async function loadSflMarketFeed(options={}){
     sourceUpdatedAt:snapshot.sourceUpdatedAt||null
    };
    const index=sflState.marketReports.findIndex(x=>x.id===report.id);
-   if(index>=0){if(!report.season&&sflState.marketReports[index].season)report.season=sflState.marketReports[index].season;sflState.marketReports[index]={...sflState.marketReports[index],...report}}else{sflState.marketReports.push(report);added++}
+   if(index>=0){if(sflState.marketReports[index].season)report.season=sflState.marketReports[index].season;sflState.marketReports[index]={...sflState.marketReports[index],...report}}else{sflState.marketReports.push(report);added++}
   }
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
   sflState.marketReports=sflState.marketReports.slice(-100);
