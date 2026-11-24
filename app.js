@@ -3,11 +3,11 @@
 const DB="ugm_pw_module",VERSION=1,STORE="state",$=id=>document.getElementById(id);
 const blank=()=>({schemaVersion:1,gameId:"pixel-worlds",inventory:[],worlds:[],events:[]});
 const blankSfl=()=>({schemaVersion:1,gameId:"sunflower-land",inventory:[],crops:[],goals:[],marketReports:[],activeSeason:null});
-const SFL_SEASON_CROPS={
- Spring:["Sunflower","Rhubarb","Carrot","Cabbage","Soybean","Corn","Wheat","Kale","Barley","Tomato","Blueberry","Orange","Grape","Rice","Olive"],
- Summer:["Sunflower","Potato","Zucchini","Beetroot","Pepper","Cauliflower","Eggplant","Radish","Wheat","Lemon","Orange","Banana","Grape","Rice","Olive"],
- Autumn:["Potato","Pumpkin","Carrot","Yam","Broccoli","Soybean","Wheat","Artichoke","Barley","Tomato","Apple","Banana","Grape","Rice","Olive"],
- Winter:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Wheat","Turnip","Kale","Lemon","Blueberry","Apple","Grape","Rice","Olive"]
+const SFL_SEASON_DATA={
+ Spring:{crops:["Sunflower","Rhubarb","Carrot","Cabbage","Soybean","Corn","Wheat","Kale","Barley"],fruits:["Tomato","Blueberry","Orange"],greenhouse:["Grape","Rice","Olive"],flowers:["Sunpetal","Bloom","Lily","Lavender"]},
+ Summer:{crops:["Sunflower","Potato","Zucchini","Pepper","Beetroot","Cauliflower","Eggplant","Radish","Wheat"],fruits:["Lemon","Orange","Banana"],greenhouse:["Grape","Rice","Olive"],flowers:["Sunpetal","Bloom","Lily","Gladiolus"]},
+ Autumn:{crops:["Potato","Pumpkin","Carrot","Yam","Broccoli","Soybean","Wheat","Barley","Artichoke"],fruits:["Tomato","Apple","Banana"],greenhouse:["Grape","Rice","Olive"],flowers:["Sunpetal","Bloom","Lily","Clover"]},
+ Winter:{crops:["Potato","Cabbage","Beetroot","Cauliflower","Parsnip","Onion","Turnip","Wheat","Kale"],fruits:["Lemon","Blueberry","Apple"],greenhouse:["Grape","Rice","Olive"],flowers:["Sunpetal","Bloom","Lily","Edelweiss"]}
 };
 const SFL_SEASONS=["Spring","Summer","Autumn","Winter"];
 const SFL_HISTORICAL_BASELINE=4.632;
@@ -51,8 +51,10 @@ function renderMarketReports(){
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestPrice=priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
- const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
- const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
+ const seasonData=activeSeason?SFL_SEASON_DATA[activeSeason]:null;
+ const seasonCrops=seasonData?[...seasonData.crops,...seasonData.fruits,...seasonData.greenhouse]:null;
+ const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase())):null;
+ const seasonGuideHtml=seasonData?'<section class="card market-target"><div class="recurring-heading"><h3>Rencana panen · '+activeSeason+'</h3><span class="recurring-badge">Sesuai data game</span></div><p class="data-note">Tanam dan panen tanaman berikut selama musim ini. Greenhouse tersedia sepanjang tahun.</p><p class="data-note"><b>Tanaman:</b> '+seasonData.crops.map(esc).join(" · ")+'</p><p class="data-note"><b>Buah:</b> '+seasonData.fruits.map(esc).join(" · ")+'</p><p class="data-note"><b>Greenhouse:</b> '+seasonData.greenhouse.map(esc).join(" · ")+'</p><p class="data-note"><b>Bunga:</b> '+seasonData.flowers.map(esc).join(" · ")+'</p></section>':'<section class="card market-target"><h3>Rencana panen per musim</h3><p class="data-note">Pilih musim aktif pada pengaturan musim, lalu konfirmasi agar daftar panen dan analisis harga mengikuti musim tersebut.</p></section>';
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
  const transactionMap=new Map();
  for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string"&&!transactionMap.has(tx.id))transactionMap.set(tx.id,tx);
@@ -105,8 +107,8 @@ function renderMarketReports(){
  });
  const rank={sell:0,watch:1,hold:2,unknown:3};
  const recommendations=items.filter(p=>sellableItems.has(String(p.item||""))&&p.inSeason).sort((a,b)=>rank[a.signal]-rank[b.signal]||a.item.localeCompare(b.item)).slice(0,5);
- const rising=items.filter(p=>p.marketChange>0).sort((a,b)=>b.marketChange-a.marketChange).slice(0,5);
- const falling=items.filter(p=>p.marketChange<0).sort((a,b)=>a.marketChange-b.marketChange).slice(0,5);
+ const rising=items.filter(p=>p.inSeason&&p.marketChange>0).sort((a,b)=>b.marketChange-a.marketChange).slice(0,5);
+ const falling=items.filter(p=>p.inSeason&&p.marketChange<0).sort((a,b)=>a.marketChange-b.marketChange).slice(0,5);
  const moverHtml=list=>list.length?list.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+(p.marketChange>0?"+":"")+p.marketChange.toFixed(2)+'%</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+' FLOWER</strong></span></div></div></article>').join(""):'<div class="empty">Belum ada perbandingan snapshot.</div>';
  const sellCount=items.filter(p=>p.signal==="sell").length;
  const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+' FLOWER</strong></span><span>Perubahan terakhir<strong>'+(p.marketChange==null?"—":(p.marketChange>0?"+":"")+p.marketChange.toFixed(2)+"%")+'</strong></span></div><p class="data-note">'+esc(p.reason)+'</p></div></article>').join(""):'<div class="empty">Belum ada item yang memenuhi kriteria rekomendasi musim ini.</div>';
@@ -114,7 +116,7 @@ function renderMarketReports(){
  const seasonHistoryHtml=seasonHistory.map(x=>'<span class="recurring-badge">'+x.season+' · '+(x.report?new Date(x.report.observedAt).toLocaleDateString("id-ID"):"Belum ada data")+'</span>').join(" ");
  const seasonNotice=activeSeason?(latestPrice.seasonVerified===true?"Musim aktif: "+activeSeason+" · snapshot terbaru sudah terverifikasi. Rekomendasi jual memakai riwayat musim ini.":"Musim aktif: "+activeSeason+" · harga terbaru tetap ditampilkan, tetapi rekomendasi jual menunggu snapshot setelah konfirmasi musim."):"Pilih musim sesuai kalender dalam game, lalu konfirmasi. Semua harga dan tren tetap tampil; rekomendasi jual menunggu verifikasi musim.";
  const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">'+esc(tx.status==="sold"?"Terjual":"Claimed")+'</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.soldAt||tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
- root.innerHTML='<section class="card market-target"><div class="recurring-heading"><h3>Market SFL</h3><span class="recurring-badge">'+items.length+' item</span></div><p class="data-note">Snapshot terbaru: '+esc(observed)+'. Perbandingan berdasarkan dua snapshot pasar terakhir.</p></section><section class="section-head"><h3>Top 5 harga naik</h3></section><div class="list">'+moverHtml(rising)+'</div><section class="section-head"><h3>Top 5 harga turun</h3></section><div class="list">'+moverHtml(falling)+'</div><section class="section-head"><h3>Rekomendasi jual</h3><span class="small muted">'+sellCount+' sinyal jual</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">'+esc(seasonNotice)+' Rekomendasi jual hanya aktif dengan minimal tiga snapshot terverifikasi dalam musim yang sama.</p>';
+ root.innerHTML='<section class="card market-target"><div class="recurring-heading"><h3>Market SFL</h3><span class="recurring-badge">'+items.length+' item pasar</span></div><p class="data-note">Snapshot terbaru: '+esc(observed)+'. Pergerakan dan rekomendasi difilter sesuai musim aktif.</p></section>'+seasonGuideHtml+'<section class="section-head"><h3>Top 5 harga naik · musim aktif</h3></section><div class="list">'+moverHtml(rising)+'</div><section class="section-head"><h3>Top 5 harga turun</h3></section><div class="list">'+moverHtml(falling)+'</div><section class="section-head"><h3>Rekomendasi jual</h3><span class="small muted">'+sellCount+' sinyal jual</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">'+esc(seasonNotice)+' Rekomendasi jual hanya aktif dengan minimal tiga snapshot terverifikasi dalam musim yang sama.</p>';
 
 
 }
