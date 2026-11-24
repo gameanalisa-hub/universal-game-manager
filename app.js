@@ -127,7 +127,7 @@ $("sflImportMarketBtn").onclick=async()=>{
    const index=sflState.marketReports.findIndex(x=>x.id===normalized.id);
    if(index>=0)sflState.marketReports[index]=normalized;else{sflState.marketReports.push(normalized);added++}
   }
-  sflState.marketReports=sflState.marketReports.slice(-100);
+  sflState.marketReports=sflState.marketReports.slice(-360);
   await saveSfl();status.textContent=added+" laporan baru diimpor; "+(reports.length-added)+" diperbarui/duplikat. Tersimpan lokal di perangkat ini.";
  }catch(error){status.textContent=error.message||"JSON tidak valid; data tidak diubah."}
 };
@@ -175,7 +175,7 @@ async function loadSflMarketFeed(options={}){
    if(index>=0){const existing=sflState.marketReports[index];if(existing.seasonVerified===true&&SFL_SEASONS.includes(existing.season)){report.season=existing.season;report.seasonVerified=true;report.seasonAssignmentSource=existing.seasonAssignmentSource||"preserved-user-confirmation"}sflState.marketReports[index]={...existing,...report}}else{sflState.marketReports.push(report);added++}
   }
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
-  sflState.marketReports=sflState.marketReports.slice(-100);
+  sflState.marketReports=sflState.marketReports.slice(-360);
   await saveSfl();
   const latest=latestSnapshot;
   if(status)status.textContent="Feed otomatis aktif · "+snapshots.length+" snapshot · "+Object.keys(latest.prices).length+" item · terbaru "+latest.date+".";
@@ -207,7 +207,7 @@ async function loadSflTransactionFeed(options={}) {
   const index=sflState.marketReports.findIndex(x=>x.id===report.id);
   if(index>=0)sflState.marketReports[index]=report;else sflState.marketReports.push(report);
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
-  sflState.marketReports=sflState.marketReports.slice(-100);
+  sflState.marketReports=sflState.marketReports.slice(-360);
   await saveSfl();
   if(status)status.textContent="Transaksi tersinkron · "+transactions.length+" catatan transaksi · penerimaan estimasi "+total.toFixed(4)+" FLOWER.";
  } catch(error) {
