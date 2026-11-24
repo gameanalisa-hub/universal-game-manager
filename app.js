@@ -83,8 +83,15 @@ function renderMarketReports(){
   const vsBaseline=baseline!=null&&baseline>0?(now-baseline)/baseline*100:null;
   const recentHigh=history.length>=4?Math.max(...history.slice(0,-1).map(x=>x.price)):history.length>=3?Math.max(...history.slice(0,-1).map(x=>x.price)):null;
   const consecutiveDrops=previous!=null&&prior!=null&&now<previous&&previous<prior;
-  let signal="unknown",trendLabel="Belum cukup data",reason=latestPrice.seasonVerified===true?"Butuh minimal 3 snapshot valid dari musim yang sama.":"Harga P2P terbaru ditampilkan, tetapi snapshot belum diverifikasi untuk musim aktif. Verifikasi rentang musim sebelum memakai sinyal jual.";
-  if(history.length>=3){
+  const itemKey=String(p.item||"").trim().toLowerCase(),inSeason=!allowedSeasonCrops||allowedSeasonCrops.has(itemKey);
+  const trendPoints=priceReports.slice(0,12).slice().reverse().map(r=>{const hit=(r.marketPrices||[]).find(x=>String(x.item||"").trim().toLowerCase()===itemKey);return hit&&Number(hit.p2pPrice)>0?Number(hit.p2pPrice):null}).filter(x=>x!=null);
+  const trendPrevious=priceReports.length>1?(priceReports[1].marketPrices||[]).find(x=>String(x.item||"").trim().toLowerCase()===itemKey):null;
+  const marketChange=trendPrevious&&Number(trendPrevious.p2pPrice)>0?(now-Number(trendPrevious.p2pPrice))/Number(trendPrevious.p2pPrice)*100:null;
+  const sparkline=trendPoints.length>1?(()=>{const min=Math.min(...trendPoints),max=Math.max(...trendPoints),span=max-min||1;const pts=trendPoints.map((v,i)=>(6+i*108/(trendPoints.length-1)).toFixed(1)+","+(30-(v-min)/span*24).toFixed(1)).join(" ");return '<svg class="sfl-sparkline" viewBox="0 0 120 36" role="img" aria-label="Tren harga '+esc(p.item)+'"><polyline points="'+pts+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'})():'<span class="data-note">Tren belum tersedia</span>';
+  let signal="unknown",trendLabel="Belum cukup data",reason=latestPrice.seasonVerified===true?"Butuh minimal 3 snapshot valid dari musim yang sama.":"Harga dan tren pasar ditampilkan; rekomendasi jual menunggu verifikasi musim aktif.";
+  if(!sellableItems.has(String(p.item||""))){signal="watch";trendLabel="Pantau harga pasar";reason="Item tercatat di market, tetapi bukan komoditas tanaman utama untuk rekomendasi jual musim ini.";}
+  else if(!inSeason){signal="watch";trendLabel="Di luar tanaman musim ini";reason="Harga tetap dipantau, tetapi item ini tidak masuk daftar tanaman musim aktif yang dipilih.";}
+  else if(history.length>=3&&activeSeason&&latestPrice.seasonVerified===true){
    const atLocalPeak=recentHigh!=null&&now>=recentHigh&&vsBaseline!=null&&vsBaseline>=1;
    const sharpDrop=change!=null&&change<=-2&&consecutiveDrops;
    const strongRise=change!=null&&change>=1.5;
@@ -94,7 +101,7 @@ function renderMarketReports(){
    else if(change!=null&&change<=-1.5){signal="watch";trendLabel="Pantau · harga melemah";reason="Harga turun "+Math.abs(change).toFixed(2)+"%; tunggu konfirmasi snapshot berikutnya sebelum mengambil keputusan.";}
    else {signal="hold";trendLabel="Tahan · belum ada sinyal jual";reason="Perubahan terbaru relatif datar; belum ada sinyal harga kuat atau penurunan beruntun.";}
   }
-  return {...p,signal,trendLabel,reason,change,vsBaseline,historyCount:history.length};
+  return {...p,signal,trendLabel,reason,change,vsBaseline,historyCount:history.length,marketChange,trendPoints,sparkline};
  });
  const recommendations=items.sort((a,b)=>{
   const rank={sell:0,watch:1,hold:2,unknown:3};
