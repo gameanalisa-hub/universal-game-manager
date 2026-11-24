@@ -108,6 +108,7 @@ function renderMarketReports(){
  root.innerHTML=targetHtml+'<p class="data-note">'+esc(seasonNotice)+'</p><div class="backup-actions">'+seasonHistoryHtml+'</div><section class="section-head"><h3>Riwayat transaksi</h3><span class="small muted">'+transactions.length+' catatan</span></section><div class="list">'+transactionHtml+'</div><section class="section-head"><h3>Keputusan Jual Musim Ini</h3><span class="small muted">'+items.length+' item</span></section><div class="list">'+recommendationHtml+'</div><p class="data-note">Pembaruan data: '+esc(observed)+'. Keputusan memerlukan minimal tiga snapshot terverifikasi dalam musim yang sama. Harga kuat di puncak lokal atau penurunan dua kali berturut-turut dapat memunculkan sinyal jual; tren naik saja bukan alasan otomatis untuk menjual. Ini indikator P2P, bukan jaminan barang pasti terjual.</p>';
 }
 $("sflFetchMarketBtn").onclick=()=>loadSflMarketFeed();
+ $("sflSyncTransactionsBtn").onclick=()=>loadSflTransactionFeed();
 $("sflClearMarketBtn").onclick=()=>{$("sflMarketJson").value="";$("sflMarketStatus").textContent="Kolom JSON dibersihkan."};
 $("sflImportMarketBtn").onclick=async()=>{
  const status=$("sflMarketStatus"),raw=$("sflMarketJson").value.trim();
@@ -449,6 +450,7 @@ $("cancelScanBtn").onclick=()=>{$("scanResults").classList.add("hidden");$("rawO
 $("saveScanBtn").onclick=async()=>{let count=0,skipped=0;for(let i=0;i<scanCandidates.length;i++){if(!$(`scanRows`).querySelector(`[data-sel="${i}"]`)?.checked)continue;const name=$(`scanRows`).querySelector(`[data-name="${i}"]`).value.trim(),quantity=Number($(`scanRows`).querySelector(`[data-qty="${i}"]`).value),category=$(`scanRows`).querySelector(`[data-cat="${i}"]`).value;if(!name||!Number.isInteger(quantity)||quantity<0||quantity>999){skipped++;continue}const existing=state.inventory.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.category===category);if(existing)existing.quantity=quantity;else state.inventory.push({id:id(),name,category,quantity,notes:"Diimpor dari OCR; periksa hasil scan"});count++}if(count){await save();$("scanStatus").textContent=count+" item disimpan"+(skipped?"; "+skipped+" dilewati karena jumlah harus 0–999":"")+". Item dengan nama dan kategori sama diperbarui, bukan digandakan."}else $("scanStatus").textContent=skipped?skipped+" item dilewati. Jumlah Inventory harus 0–999 per stack.":"Tidak ada item yang dipilih atau datanya tidak valid.";$("scanResults").classList.add("hidden")};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 load().then(()=>{loadSflMarketFeed({silent:true});loadSflTransactionFeed({silent:true})}).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadSflTransactionFeed({silent:true})});
 loadAutoEvents();
 
 // Pixel Worlds PWE offer calculator: seed count multiplied by offer per seed.
