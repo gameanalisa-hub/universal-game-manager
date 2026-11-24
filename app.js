@@ -40,17 +40,26 @@ $("sflCropForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.cu
 $("sflGoalForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.currentTarget);sflState.goals.push({id:id(),name:f.get("name").trim(),current:Number(f.get("current")),goal:Number(f.get("goal")),notes:f.get("notes").trim()});hideSflForm("sflGoalForm");await saveSfl()};
 function renderSflList(kind,container){const root=$(container),items=sflState[kind];if(!items.length){root.innerHTML='<div class="empty">Belum ada catatan. Gunakan tombol tambah untuk memulai.</div>';return}root.innerHTML=items.map(x=>{let detail="",badge=kind==="inventory"?(x.category||"Item"):kind==="crops"?(x.status||"Farm"):"Target",pct=0;if(kind==="inventory")detail="Jumlah: "+Number(x.quantity||0).toLocaleString("id-ID");if(kind==="crops")detail=Number(x.quantity||0)+" unit"+(x.harvestDate?" · Panen: "+x.harvestDate:"");if(kind==="goals"){pct=x.goal>0?Math.min(100,Math.round(x.current/x.goal*100)):0;detail=Number(x.current||0)+" / "+Number(x.goal||0)+" ("+pct+"%)"}return '<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(x.name)+'</b><span class="recurring-badge">'+esc(badge)+'</span></div><div class="recurring-next"><span>'+(kind==="goals"?"Progress target":"Catatan")+'</span><strong>'+esc(detail)+'</strong>'+(kind==="goals"?'<div class="progress"><span style="width:'+pct+'%"></span></div>':"")+'</div><p class="data-note">'+esc(x.notes||"Tanpa catatan")+'</p></div><div class="item-actions"><button class="btn danger" data-sfl-remove="'+kind+'" data-id="'+esc(x.id)+'">Hapus</button></div></article>'}).join("")}
 
+function isSflPriceSource(value){
+ try{
+  const url=new URL(value);
+  return url.protocol==="https:"&&url.hostname==="sfl.world"&&url.pathname==="/api/v1/prices";
+ }catch{return false}
+}
 function validMarketReport(x){
  if(!x||x.type!=="sfl-market-report"||x.schemaVersion!==1||typeof x.observedAt!=="string"||!Number.isFinite(Date.parse(x.observedAt)))return false;
+ if(!isSflPriceSource(x.sourceUrl))return false;
  const numeric=v=>v===null||v===undefined||(typeof v==="number"&&Number.isFinite(v)&&v>=0);
- return numeric(x.walletBalance)&&numeric(x.confirmedReceipts)&&numeric(x.target)&&Array.isArray(x.marketPrices||[])&&Array.isArray(x.transactions||[]);
+ const prices=x.marketPrices;
+ const validPrices=Array.isArray(prices)&&prices.length>0&&prices.every(p=>p&&typeof p.item==="string"&&p.item.trim().length>0&&typeof p.p2pPrice==="number"&&Number.isFinite(p.p2pPrice)&&p.p2pPrice>0);
+ return numeric(x.walletBalance)&&numeric(x.confirmedReceipts)&&numeric(x.target)&&validPrices&&Array.isArray(x.transactions||[]);
 }
 function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestVerifiedPrice=(activeSeason?verifiedPrices.find(r=>r.season===activeSeason):priceReports[0]),latestPrice=latestVerifiedPrice||priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
+ const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&validMarketReport(r)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestVerifiedPrice=(activeSeason?verifiedPrices.find(r=>r.season===activeSeason):priceReports[0]),latestPrice=latestVerifiedPrice||priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
@@ -144,7 +153,7 @@ async function loadSflMarketFeed(options={}){
   const response=await fetch("./market-feed.json?ts="+Date.now(),{cache:"no-store"});
   if(!response.ok)throw new Error("HTTP "+response.status);
   const feed=await response.json();
-  if(feed.type!=="sfl-market-feed"||feed.schemaVersion!==1||!Array.isArray(feed.history))throw new Error("Format feed market tidak valid");
+  if(feed.type!=="sfl-market-feed"||feed.schemaVersion!==1||!Array.isArray(feed.history)||!isSflPriceSource(feed.sourceUrl))throw new Error("Format feed market tidak valid atau sumber bukan SFL.world API resmi.");
   const snapshots=feed.history.filter(x=>x&&typeof x.date==="string"&&x.prices&&typeof x.prices==="object");
   if(!snapshots.length)throw new Error("Belum ada snapshot harga pada feed");
   sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[];
