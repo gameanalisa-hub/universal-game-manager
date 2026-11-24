@@ -50,7 +50,7 @@ function renderMarketReports(){
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
  if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
- const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestVerifiedPrice=(activeSeason?verifiedPrices.find(r=>r.season===activeSeason):priceReports[0]),latestPrice=latestVerifiedPrice||priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
+ const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestPrice=priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
  const seasonCrops=activeSeason?SFL_SEASON_CROPS[activeSeason]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
@@ -75,7 +75,7 @@ function renderMarketReports(){
   }
  }
  const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey","Grape","Rice","Olive"]);
- const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&Number(p.p2pPrice)>0&&sellableItems.has(String(p.item||""))&&(!allowedSeasonCrops||allowedSeasonCrops.has(String(p.item||"").trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase()))).map(p=>{
+ const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&Number(p.p2pPrice)>0).map(p=>{
   const history=(itemHistory.get(String(p.item||"").trim().toLowerCase())||[]).filter(x=>Date.parse(x.observedAt)<=Date.parse(latestPrice.observedAt)).slice(-4);
   const now=Number(p.p2pPrice),previous=history.length>=2?history[history.length-2].price:null,prior=history.length>=3?history[history.length-3].price:null;
   const change=previous!=null&&previous>0?((now-previous)/previous*100):null;
