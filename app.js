@@ -70,7 +70,7 @@ function renderMarketReports(){
   for(const report of verifiedPrices.filter(r=>r.season===activeSeason).slice().sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt))){
    for(const p of report.marketPrices||[]){
     const price=Number(p.p2pPrice);if(p.p2pPrice==null||!Number.isFinite(price)||price<=0)continue;
-    const key=String(p.item||"").trim().toLowerCase();if(!key)continue;
+    const key=normalizeSflItemName(p.item);if(!key)continue;
     if(!itemHistory.has(key))itemHistory.set(key,[]);
     itemHistory.get(key).push({price,observedAt:report.observedAt});
    }
