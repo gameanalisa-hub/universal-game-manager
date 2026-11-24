@@ -1,9 +1,19 @@
 const API = "https://sfl.world/api/v1/prices";
-const response = await fetch(API, {
-  headers: { "User-Agent": "UniversalGameManager/1.0 (public market snapshot)" },
-  signal: AbortSignal.timeout(20000)
-});
-if (!response.ok) throw new Error(`SFL.world price feed returned HTTP ${response.status}`);
+let response, lastFetchError;
+for (let attempt = 1; attempt <= 3; attempt++) {
+  try {
+    response = await fetch(API, {
+      headers: { "User-Agent": "UniversalGameManager/1.0 (public market snapshot)" },
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!response.ok) throw new Error("SFL.world price feed returned HTTP " + response.status);
+    break;
+  } catch (error) {
+    lastFetchError = error;
+    if (attempt < 3) await new Promise(resolve => setTimeout(resolve, attempt * 5000));
+  }
+}
+if (!response?.ok) throw lastFetchError || new Error("SFL.world price feed unavailable after 3 attempts");
 const payload = await response.json();
 const prices = payload?.data?.p2p;
 if (!prices || typeof prices !== "object" || Array.isArray(prices)) {
