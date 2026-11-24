@@ -137,6 +137,8 @@ document.addEventListener("click",async e=>{
 });
 
 async function loadSflMarketFeed(options={}){
+ if(loadSflMarketFeed.running)return;
+ loadSflMarketFeed.running=true;
  const status=$("sflMarketStatus"),button=$("sflFetchMarketBtn");
  if(button)button.disabled=true;
  if(status&&!options.silent)status.textContent="Mengambil feed harga P2P SFL.world…";
@@ -173,14 +175,17 @@ async function loadSflMarketFeed(options={}){
    if(index>=0){const existing=sflState.marketReports[index];if(existing.seasonVerified===true&&SFL_SEASONS.includes(existing.season)){report.season=existing.season;report.seasonVerified=true;report.seasonAssignmentSource=existing.seasonAssignmentSource||"preserved-user-confirmation"}sflState.marketReports[index]={...existing,...report}}else{sflState.marketReports.push(report);added++}
   }
   sflState.marketReports.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt));
-  sflState.marketReports=sflState.marketReports.slice(-100);
+  sflState.marketReports=sflState.marketReports.slice(-360);
   await saveSfl();
+  renderSfl();
   const latest=latestSnapshot;
-  if(status)status.textContent="Feed otomatis aktif · "+snapshots.length+" snapshot · "+Object.keys(latest.prices).length+" item · terbaru "+latest.date+".";
+  const sourceTime=latest.sourceUpdatedAt&&Number.isFinite(Date.parse(latest.sourceUpdatedAt))?new Date(latest.sourceUpdatedAt).toLocaleString("id-ID"):"waktu sumber tidak tersedia";
+  if(status)status.textContent="GitHub feed tersinkron · "+snapshots.length+" snapshot · "+Object.keys(latest.prices).length+" item · data sumber "+sourceTime+".";
  }catch(error){
   if(status)status.textContent="Feed otomatis belum dapat dimuat ("+(error.message||"kesalahan jaringan")+"). Impor JSON manual tetap tersedia.";
  }finally{
   if(button)button.disabled=false;
+  loadSflMarketFeed.running=false;
  }
 }
 async function loadSflTransactionFeed(options={}) {
@@ -450,7 +455,8 @@ $("cancelScanBtn").onclick=()=>{$("scanResults").classList.add("hidden");$("rawO
 $("saveScanBtn").onclick=async()=>{let count=0,skipped=0;for(let i=0;i<scanCandidates.length;i++){if(!$(`scanRows`).querySelector(`[data-sel="${i}"]`)?.checked)continue;const name=$(`scanRows`).querySelector(`[data-name="${i}"]`).value.trim(),quantity=Number($(`scanRows`).querySelector(`[data-qty="${i}"]`).value),category=$(`scanRows`).querySelector(`[data-cat="${i}"]`).value;if(!name||!Number.isInteger(quantity)||quantity<0||quantity>999){skipped++;continue}const existing=state.inventory.find(x=>x.name.toLowerCase()===name.toLowerCase()&&x.category===category);if(existing)existing.quantity=quantity;else state.inventory.push({id:id(),name,category,quantity,notes:"Diimpor dari OCR; periksa hasil scan"});count++}if(count){await save();$("scanStatus").textContent=count+" item disimpan"+(skipped?"; "+skipped+" dilewati karena jumlah harus 0–999":"")+". Item dengan nama dan kategori sama diperbarui, bukan digandakan."}else $("scanStatus").textContent=skipped?skipped+" item dilewati. Jumlah Inventory harus 0–999 per stack.":"Tidak ada item yang dipilih atau datanya tidak valid.";$("scanResults").classList.add("hidden")};
 if("serviceWorker"in navigator&&(location.protocol==="https:"||location.hostname==="localhost"))addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 load().then(()=>{loadSflMarketFeed({silent:true});loadSflTransactionFeed({silent:true})}).catch(()=>notice("IndexedDB tidak tersedia di browser ini."));
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)loadSflTransactionFeed({silent:true})});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){loadSflMarketFeed({silent:true});loadSflTransactionFeed({silent:true})}});
+setInterval(()=>{if(!document.hidden)loadSflMarketFeed({silent:true})},10*60*1000);
 loadAutoEvents();
 
 // Pixel Worlds PWE offer calculator: seed count multiplied by offer per seed.
