@@ -107,25 +107,9 @@ function renderMarketReports(){
   const rank={sell:0,watch:1,hold:2,unknown:3};
   return rank[a.signal]-rank[b.signal]||a.item.localeCompare(b.item);
  });
- const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+'</strong></span><span>Perubahan terakhir<strong>'+(p.change==null?"Belum cukup data":(p.change>0?"+":"")+p.change.toFixed(2)+"%")+'</strong></span><span>Vs rata-rata<strong>'+(p.vsBaseline==null?"—":(p.vsBaseline>0?"+":"")+p.vsBaseline.toFixed(2)+"%")+'</strong></span></div><p class="data-note">'+esc(p.reason)+'</p><small class="muted">'+p.historyCount+' snapshot musim ini</small></div></article>').join(""):'<div class="empty">Belum ada harga P2P yang tersedia.</div>';
+ const upCount=items.filter(p=>p.marketChange>0).length,downCount=items.filter(p=>p.marketChange<0).length,sellCount=items.filter(p=>p.signal==="sell").length;
+ const recommendationHtml=recommendations.length?recommendations.map(p=>'<article class="item recurring-event data-card market-price sfl-market-row" data-market-item="'+esc(p.item.toLowerCase())+'" data-market-change="'+(p.marketChange==null?"flat":p.marketChange>0?"up":p.marketChange<0?"down":"flat")+'" data-market-signal="'+p.signal+'"><div class="item-main"><div class="recurring-heading"><b>'+esc(p.item)+'</b><span class="recurring-badge">'+p.trendLabel+'</span></div><div class="market-price-grid"><span>Harga P2P<strong>'+fmt(p.p2pPrice)+' FLOWER</strong></span><span>Perubahan snapshot<strong>'+(p.marketChange==null?"—":(p.marketChange>0?"+":"")+p.marketChange.toFixed(2)+"%")+'</strong></span><span>Riwayat musim<strong>'+p.historyCount+' snapshot</strong></span></div><div class="sfl-trend-row">'+p.sparkline+'<small class="'+(p.marketChange>0?"pw-trend-up":p.marketChange<0?"pw-trend-down":"muted")+'">'+(p.marketChange==null?"Perubahan belum tersedia":p.marketChange>0?"Naik dibanding snapshot sebelumnya":p.marketChange<0?"Turun dibanding snapshot sebelumnya":"Tidak berubah")+'</small></div><p class="data-note">'+esc(p.reason)+'</p></div></article>').join(""):'<div class="empty">Belum ada harga P2P yang tersedia.</div>';
  const observed=latestPrice.observedAt?new Date(latestPrice.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
- const recent=priceReports.slice(0,2),rising=[],falling=[];
- if(recent.length===2){
-  const prior=new Map((recent[1].marketPrices||[]).map(p=>[String(p.item||"").toLowerCase(),Number(p.p2pPrice)]));
-  for(const p of recent[0].marketPrices||[]){
-   const before=prior.get(String(p.item||"").toLowerCase()),now=Number(p.p2pPrice);
-   if(Number.isFinite(before)&&before>0&&Number.isFinite(now)&&now>0){
-    const change=(now-before)/before*100;
-    if(change>0)rising.push({item:p.item,price:now,change});
-    else if(change<0)falling.push({item:p.item,price:now,change});
-   }
-  }
- }
- rising.sort((a,b)=>b.change-a.change);
- falling.sort((a,b)=>a.change-b.change);
- const renderMoverList=list=>list.length?list.slice(0,5).map(x=>'<div class="market-price-grid"><span>'+esc(x.item)+'<strong>'+fmt(x.price)+' FLOWER</strong></span><span>Perubahan<strong>'+(x.change>0?"+":"")+x.change.toFixed(2)+'%</strong></span></div>').join(""):'<p class="data-note">Belum ada perubahan harga terdeteksi.</p>';
- const moverTime=recent[0]?.observedAt?new Date(recent[0].observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"—";
- const marketMoversHtml=`<section class="card recurring-event backup-card market-target"><div class="recurring-heading"><h3>Market Movers SFL · P2P</h3><span class="recurring-badge">Perbandingan 2 snapshot</span></div><p class="data-note">Harga naik dan turun dibanding snapshot sebelumnya. Snapshot terbaru: ${esc(moverTime)}.</p><div class="section-head"><h4>Harga naik</h4></div>${renderMoverList(rising)}<div class="section-head"><h4>Harga turun</h4></div>${renderMoverList(falling)}</section>`;
  const seasonHistoryHtml=seasonHistory.map(x=>'<span class="recurring-badge">'+x.season+' · '+(x.report?new Date(x.report.observedAt).toLocaleDateString("id-ID"):"Belum ada data")+'</span>').join(" ");
  const seasonNotice=activeSeason?(latestPrice.observedAt?"Data harga "+activeSeason+" · analisis memakai riwayat snapshot yang diverifikasi untuk musim ini.":"Belum ada snapshot yang diverifikasi untuk "+activeSeason+". Konfirmasi musim aktif sekarang; snapshot baru setelah konfirmasi akan dihitung. Snapshot musim lain tidak dipakai."):"Pilih musim sesuai kalender dalam game, lalu konfirmasi musim aktif. Snapshot baru akan dihitung otomatis.";
  const transactionHtml=transactions.length?transactions.map(tx=>'<article class="item recurring-event data-card"><div class="item-main"><div class="recurring-heading"><b>'+esc(tx.item)+'</b><span class="recurring-badge">'+esc(tx.status==="sold"?"Terjual":"Claimed")+'</span></div><small>'+fmt(tx.quantity)+' unit · '+fmt(tx.amount)+' FLOWER · '+esc(tx.soldAt||tx.claimedAt||"Tanggal tidak tersedia")+'</small></div></article>').join(""):'<div class="empty">Belum ada transaksi claimed yang tersinkron.</div>';
