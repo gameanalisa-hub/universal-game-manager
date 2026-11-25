@@ -52,7 +52,7 @@ function renderMarketReports(){
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestPrice=priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
  const seasonData=activeSeason?SFL_SEASON_DATA[activeSeason]:null;
- const seasonCrops=seasonData?[...seasonData.crops,...seasonData.fruits,...seasonData.greenhouse]:null;
+ const seasonCrops=seasonData?[...seasonData.crops,...seasonData.fruits,...seasonData.greenhouse,...seasonData.flowers]:null;
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonGuideHtml=seasonData?'<section class="card market-target"><div class="recurring-heading"><h3>Rencana panen · '+activeSeason+'</h3><span class="recurring-badge">Sesuai data game</span></div><p class="data-note">Tanam dan panen tanaman berikut selama musim ini. Greenhouse tersedia sepanjang tahun.</p><p class="data-note"><b>Tanaman:</b> '+seasonData.crops.map(esc).join(" · ")+'</p><p class="data-note"><b>Buah:</b> '+seasonData.fruits.map(esc).join(" · ")+'</p><p class="data-note"><b>Greenhouse:</b> '+seasonData.greenhouse.map(esc).join(" · ")+'</p><p class="data-note"><b>Bunga:</b> '+seasonData.flowers.map(esc).join(" · ")+'</p></section>':'<section class="card market-target"><h3>Rencana panen per musim</h3><p class="data-note">Pilih musim aktif pada pengaturan musim, lalu konfirmasi agar daftar panen dan analisis harga mengikuti musim tersebut.</p></section>';
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
@@ -76,7 +76,7 @@ function renderMarketReports(){
    }
   }
  }
- const sellableItems=new Set(["Sunflower","Potato","Pumpkin","Carrot","Cabbage","Beetroot","Cauliflower","Parsnip","Radish","Wheat","Kale","Apple","Blueberry","Orange","Eggplant","Corn","Banana","Soybean","Tomato","Lemon","Barley","Rhubarb","Zucchini","Yam","Broccoli","Pepper","Onion","Turnip","Artichoke","Duskberry","Lunara","Celestine","Saltwort","Egg","Honey","Grape","Rice","Olive"]);
+ const sellableItems=new Set([...SFL_SEASONS.flatMap(season=>{const d=SFL_SEASON_DATA[season];return [...d.crops,...d.fruits,...d.greenhouse,...d.flowers]}),"Duskberry","Lunara","Celestine","Saltwort","Egg","Honey"]);
  const items=(latestPrice.marketPrices||[]).filter(p=>p.p2pPrice!=null&&Number(p.p2pPrice)>0).map(p=>{
   const history=(itemHistory.get(String(p.item||"").trim().toLowerCase())||[]).filter(x=>Date.parse(x.observedAt)<=Date.parse(latestPrice.observedAt)).slice(-4);
   const now=Number(p.p2pPrice),previous=history.length>=2?history[history.length-2].price:null,prior=history.length>=3?history[history.length-3].price:null;
@@ -86,8 +86,8 @@ function renderMarketReports(){
   const recentHigh=history.length>=4?Math.max(...history.slice(0,-1).map(x=>x.price)):history.length>=3?Math.max(...history.slice(0,-1).map(x=>x.price)):null;
   const consecutiveDrops=previous!=null&&prior!=null&&now<previous&&previous<prior;
   const itemKey=String(p.item||"").trim().toLowerCase(),inSeason=!allowedSeasonCrops||allowedSeasonCrops.has(itemKey);
-  const trendPoints=priceReports.slice(0,12).slice().reverse().map(r=>{const hit=(r.marketPrices||[]).find(x=>String(x.item||"").trim().toLowerCase()===itemKey);return hit&&Number(hit.p2pPrice)>0?Number(hit.p2pPrice):null}).filter(x=>x!=null);
-  const trendPrevious=priceReports.length>1?(priceReports[1].marketPrices||[]).find(x=>String(x.item||"").trim().toLowerCase()===itemKey):null;
+  const trendPoints=history.map(x=>x.price);
+  const trendPrevious=history.length>1?{p2pPrice:history[history.length-2].price}:null;
   const marketChange=trendPrevious&&Number(trendPrevious.p2pPrice)>0?(now-Number(trendPrevious.p2pPrice))/Number(trendPrevious.p2pPrice)*100:null;
   const sparkline=trendPoints.length>1?(()=>{const min=Math.min(...trendPoints),max=Math.max(...trendPoints),span=max-min||1;const pts=trendPoints.map((v,i)=>(6+i*108/(trendPoints.length-1)).toFixed(1)+","+(30-(v-min)/span*24).toFixed(1)).join(" ");return '<svg class="sfl-sparkline" viewBox="0 0 120 36" role="img" aria-label="Tren harga '+esc(p.item)+'"><polyline points="'+pts+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'})():'<span class="data-note">Tren belum tersedia</span>';
   let signal="unknown",trendLabel="Belum cukup data",reason=latestPrice.seasonVerified===true?"Butuh minimal 3 snapshot valid dari musim yang sama.":"Harga dan tren pasar ditampilkan; rekomendasi jual menunggu verifikasi musim aktif.";
