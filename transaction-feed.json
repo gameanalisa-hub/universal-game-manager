@@ -2,7 +2,7 @@
   "type": "sfl-transaction-feed",
   "schemaVersion": 1,
   "currency": "FLOWER",
-  "updatedAt": "2026-11-24T11:00:00+07:00",
+  "updatedAt": "2026-11-26T22:07:00+07:00",
   "transactions": [
     {
       "id": "sfl-claim-onion-146-2026-11-20",
@@ -66,6 +66,17 @@
       "status": "sold",
       "soldAt": "2026-11-24",
       "source": "user-provided-text"
+    },
+    {
+      "id": "sfl-sale-orange-100-2026-11-26",
+      "item": "Orange",
+      "quantity": 100,
+      "amount": 1.2277,
+      "currency": "FLOWER",
+      "status": "sold",
+      "soldAt": "2026-11-26",
+      "source": "user-provided-claim-screenshot",
+      "note": "100 Orange terjual dan hasil 1.2277 FLOWER diklaim pengguna."
     }
   ],
   "walletBalance": 8.6299,
