@@ -27,7 +27,7 @@ function switchGame(game){
  $("pixelMain").classList.toggle("hidden",!pixel);$("sunflowerMain").classList.toggle("hidden",pixel);
  $("gamePixelBtn").classList.toggle("primary",pixel);$("gameSunflowerBtn").classList.toggle("primary",!pixel);
  document.querySelectorAll(".tab[data-tab]").forEach(x=>x.classList.toggle("active",pixel&&x.dataset.tab==="market"));document.querySelectorAll("#pixelMain .panel").forEach(x=>x.classList.toggle("active",pixel&&x.id==="market"));
- if(!pixel){document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x.dataset.sflTab==="sflMarket"));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id==="sflMarket"));renderSfl()}
+ if(!pixel){document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x.dataset.sflTab==="sflDashboard"));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id==="sflDashboard"));renderSfl()}
 }
 $("gamePixelBtn").onclick=()=>switchGame("pixel");$("gameSunflowerBtn").onclick=()=>switchGame("sunflower");
 document.querySelectorAll("[data-sfl-tab]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-sfl-tab]").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll("#sunflowerMain .panel").forEach(x=>x.classList.toggle("active",x.id===b.dataset.sflTab))}));
@@ -45,10 +45,36 @@ function validMarketReport(x){
  const numeric=v=>v===null||v===undefined||(typeof v==="number"&&Number.isFinite(v)&&v>=0);
  return numeric(x.walletBalance)&&numeric(x.confirmedReceipts)&&numeric(x.target)&&Array.isArray(x.marketPrices||[])&&Array.isArray(x.transactions||[]);
 }
+function buildSflGoalHtml(reports){
+ const rows=(reports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
+ const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
+ const latest=rows[0]||null;
+ const balanceReport=rows.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0]||null;
+ const transactionMap=new Map();
+ for(const report of rows)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string"&&!transactionMap.has(tx.id))transactionMap.set(tx.id,tx);
+ const transactions=[...transactionMap.values()];
+ const estimated=SFL_HISTORICAL_BASELINE+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
+ const actual=!!balanceReport;
+ const balance=actual?Number(balanceReport.walletBalance):(transactions.length?estimated:(latest?.confirmedReceipts??null));
+ const target=Number((balanceReport||latest||{}).target||410);
+ const updatedAt=actual?(balanceReport.walletBalanceUpdatedAt||balanceReport.balanceUpdatedAt||balanceReport.observedAt):null;
+ const timeKnown=!!updatedAt&&String(updatedAt).includes("T");
+ const age=updatedAt?Math.max(0,Date.now()-Date.parse(updatedAt)):null;
+ const stale=actual&&age!=null&&age>(timeKnown?24:36)*3600000;
+ const updatedLabel=updatedAt?(timeKnown?new Date(updatedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):new Date(updatedAt).toLocaleDateString("id-ID",{dateStyle:"medium"})+" (jam tidak dicatat)"):"waktu pembaruan tidak tersedia";
+ const delta=actual?Number((balance-estimated).toFixed(8)):null;
+ const reconciliation=actual&&transactions.length&&Math.abs(delta)>=0.00005
+  ?'<p class="data-note">Rekonsiliasi: saldo wallet '+fmt(balance)+' FLOWER; baseline + transaksi '+fmt(estimated)+' FLOWER. Selisih '+(delta>0?"+":"")+fmt(delta)+' FLOWER belum terjelaskan.</p>'
+  :(actual?'<p class="data-note">Saldo wallet terkonfirmasi menjadi acuan target. Catatan transaksi ditampilkan terpisah.</p>':'<p class="data-note">Saldo belum terverifikasi. '+(transactions.length?'Estimasi berasal dari baseline historis 4.632 FLOWER ditambah transaksi tercatat.':'Belum ada saldo atau transaksi yang dapat dihitung.')+'</p>');
+ const remaining=balance==null?null:Math.max(0,target-Number(balance));
+ const pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
+ return '<section class="card recurring-event backup-card market-target sfl-goal-hero"><div class="sfl-goal-top"><div><span class="sfl-goal-kicker">TARGET UTAMA</span><h3>'+fmt(target)+' FLOWER</h3></div><span class="recurring-badge">'+(actual?(stale?"Saldo perlu diperbarui":"Wallet terkonfirmasi"):"Estimasi penerimaan")+'</span></div><div class="sfl-goal-number">'+fmt(balance)+' <span>/ '+fmt(target)+' FLOWER</span></div><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><div class="sfl-goal-foot"><strong>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</strong><span>'+(remaining==null?"Saldo belum diketahui":"Sisa "+fmt(remaining)+" FLOWER")+'</span></div><small class="sfl-goal-status">'+(actual?"Saldo wallet diperbarui: "+updatedLabel+(stale?" · PERLU KONFIRMASI ULANG":""):"Saldo wallet belum terverifikasi")+'</small></section>'+reconciliation;
+}
 function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
  const reports=(sflState.marketReports||[]).slice().sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt));
- if(!reports.length){root.innerHTML='<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
+ const targetHtml=buildSflGoalHtml(reports);
+ if(!reports.length){root.innerHTML=targetHtml+'<div class="empty">Belum ada data harga. Feed SFL.world akan mengisi data saat tersedia.</div>';return}
  const fmt=v=>v==null?"—":Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const latest=reports[0],balanceReport=reports.filter(r=>r.walletBalance!=null).sort((a,b)=>Date.parse(b.walletBalanceUpdatedAt||b.balanceUpdatedAt||b.observedAt)-Date.parse(a.walletBalanceUpdatedAt||a.balanceUpdatedAt||a.observedAt))[0],priceReports=reports.filter(r=>!String(r.id||"").startsWith("sfl-transactions-")&&r.marketPrices&&r.marketPrices.some(p=>p.p2pPrice!=null)).sort((a,b)=>Date.parse(b.observedAt)-Date.parse(a.observedAt)),activeSeason=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:null,verifiedPrices=priceReports.filter(r=>r.seasonVerified===true&&SFL_SEASONS.includes(r.season)),latestPrice=priceReports[0]||{marketPrices:[],observedAt:null,season:activeSeason,seasonVerified:false};
  const seasonData=activeSeason?SFL_SEASON_DATA[activeSeason]:null;
@@ -56,15 +82,6 @@ function renderMarketReports(){
  const allowedSeasonCrops=seasonCrops?new Set(seasonCrops.map(name=>String(name).trim().replace(/\\s+(seed|seeds)$/i,"").toLowerCase())):null;
  const seasonGuideHtml=seasonData?'<section class="card market-target"><div class="recurring-heading"><h3>Rencana panen · '+activeSeason+'</h3><span class="recurring-badge">Sesuai data game</span></div><p class="data-note">Tanam dan panen tanaman berikut selama musim ini. Greenhouse tersedia sepanjang tahun.</p><p class="data-note"><b>Tanaman:</b> '+seasonData.crops.map(esc).join(" · ")+'</p><p class="data-note"><b>Buah:</b> '+seasonData.fruits.map(esc).join(" · ")+'</p><p class="data-note"><b>Greenhouse:</b> '+seasonData.greenhouse.map(esc).join(" · ")+'</p><p class="data-note"><b>Bunga:</b> '+seasonData.flowers.map(esc).join(" · ")+'</p></section>':'<section class="card market-target"><h3>Rencana panen per musim</h3><p class="data-note">Pilih musim aktif pada pengaturan musim, lalu konfirmasi agar daftar panen dan analisis harga mengikuti musim tersebut.</p></section>';
  const seasonHistory=SFL_SEASONS.map(season=>({season,report:verifiedPrices.find(r=>r.season===season)}));
- const transactionMap=new Map();
- for(const report of reports)for(const tx of report.transactions||[])if(tx&&typeof tx.id==="string"&&!transactionMap.has(tx.id))transactionMap.set(tx.id,tx);
-  const transactions=[...transactionMap.values()].sort((a,b)=>String(b.soldAt||b.claimedAt||"").localeCompare(String(a.soldAt||a.claimedAt||"")));
-  const estimatedReceipts=SFL_HISTORICAL_BASELINE+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
-  const actual=!!balanceReport,balance=actual?Number(balanceReport.walletBalance):(transactions.length?estimatedReceipts:latest.confirmedReceipts),target=Number((balanceReport||latest).target||410),walletUpdatedAt=actual?(balanceReport.walletBalanceUpdatedAt||balanceReport.balanceUpdatedAt||balanceReport.observedAt):null,walletTimeKnown=!!walletUpdatedAt&&String(walletUpdatedAt).includes("T"),walletAgeMs=walletUpdatedAt?Math.max(0,Date.now()-Date.parse(walletUpdatedAt)):null,walletStale=actual&&walletAgeMs!=null&&walletAgeMs>(walletTimeKnown?24:36)*3600000,walletUpdatedLabel=walletUpdatedAt?(walletTimeKnown?new Date(walletUpdatedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):new Date(walletUpdatedAt).toLocaleDateString("id-ID",{dateStyle:"medium"})+" (jam tidak dicatat)"):"waktu pembaruan tidak tersedia";
-  const reconciliationDelta=actual?Number((balance-estimatedReceipts).toFixed(8)):null;
-  const reconciliationHtml=actual&&transactions.length&&Math.abs(reconciliationDelta)>=0.00005?'<p class="data-note">Rekonsiliasi: saldo wallet terakhir dikonfirmasi '+fmt(balance)+' FLOWER; baseline historis + transaksi tercatat '+fmt(estimatedReceipts)+' FLOWER. Selisih '+(reconciliationDelta>0?"+":"")+fmt(reconciliationDelta)+' FLOWER belum terjelaskan. Saldo wallet tetap acuan, dengan memperhatikan umur datanya.</p>':(actual?'<p class="data-note">Saldo wallet terakhir dikonfirmasi digunakan sebagai acuan target. Catatan transaksi ditampilkan terpisah.</p>':'<p class="data-note">Estimasi dihitung dari baseline historis 4.632 FLOWER ditambah transaksi tercatat. Ini bukan saldo wallet terverifikasi.</p>');
-  const remaining=balance==null?null:Math.max(0,target-Number(balance)),pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
-  const targetHtml='<section class="card recurring-event backup-card market-target sfl-goal-hero"><div class="sfl-goal-top"><div><span class="sfl-goal-kicker">TARGET UTAMA</span><h3>410 FLOWER</h3></div><span class="recurring-badge">'+(actual?(walletStale?"Saldo perlu diperbarui":"Wallet terkonfirmasi"):"Estimasi penerimaan") +'</span></div><div class="sfl-goal-number">'+fmt(balance)+' <span>/ '+fmt(target)+' FLOWER</span></div><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><div class="sfl-goal-foot"><strong>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai") +'</strong><span>'+(remaining==null?"Saldo belum diketahui":"Sisa "+fmt(remaining)+" FLOWER") +'</span></div><small class="sfl-goal-status">'+(actual?"Saldo wallet diperbarui: "+walletUpdatedLabel+(walletStale?" · PERLU KONFIRMASI ULANG":""):"Saldo wallet belum terverifikasi") +'</small></section>'+reconciliationHtml;
  const itemHistory=new Map();
  if(activeSeason&&latestPrice.seasonVerified===true&&latestPrice.season===activeSeason){
   for(const report of verifiedPrices.filter(r=>r.season===activeSeason).slice().sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt))){
@@ -230,7 +247,7 @@ async function loadSflTransactionFeed(options={}) {
   if(status&&!options.silent)status.textContent="Feed transaksi belum dapat dimuat ("+(error.message||"kesalahan jaringan")+").";
  }
 }
-function renderSfl(){ const seasonSelect=$("sflSeasonSelect");if(seasonSelect)seasonSelect.value=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:""; sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
+function renderSfl(){ const dashboardGoal=$("sflDashboardGoal");if(dashboardGoal)dashboardGoal.innerHTML=buildSflGoalHtml(sflState.marketReports||[]); const seasonSelect=$("sflSeasonSelect");if(seasonSelect)seasonSelect.value=SFL_SEASONS.includes(sflState.activeSeason)?sflState.activeSeason:""; sflState.marketReports=Array.isArray(sflState.marketReports)?sflState.marketReports:[]; $("sflStatItems").textContent=sflState.inventory.length;$("sflStatCrops").textContent=sflState.crops.length;$("sflStatGoals").textContent=sflState.goals.length;renderSflList("inventory","sflInventoryList");renderSflList("crops","sflCropList");renderSflList("goals","sflGoalList");renderMarketReports();const recent=[...sflState.inventory.slice(-2).map(x=>({name:x.name,detail:(x.category||"Item")+" · "+x.quantity})),...sflState.crops.slice(-2).map(x=>({name:x.name,detail:x.status+" · "+x.quantity+" unit"})),...sflState.goals.slice(-2).map(x=>({name:x.name,detail:x.current+" / "+x.goal}))].slice(-6).reverse();$("sflRecent").innerHTML=recent.length?recent.map(x=>'<article class="item recurring-event overview-entry"><div class="item-main"><b>'+esc(x.name)+'</b><small>'+esc(x.detail)+'</small></div></article>').join(""):'<div class="empty">Belum ada data Sunflower Land.</div>'}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-sfl-remove]");if(!b)return;const kind=b.dataset.sflRemove,item=sflState[kind].find(x=>x.id===b.dataset.id);if(!item||!confirm('Hapus "'+item.name+'"?'))return;sflState[kind]=sflState[kind].filter(x=>x.id!==item.id);saveSfl()});
 
 function id(){return crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2)}
