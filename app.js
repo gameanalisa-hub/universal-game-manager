@@ -55,20 +55,26 @@ function buildSflGoalHtml(reports){
  const transactions=[...transactionMap.values()];
  const estimated=SFL_HISTORICAL_BASELINE+transactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
  const actual=!!balanceReport;
- const balance=actual?Number(balanceReport.walletBalance):(transactions.length?estimated:(latest?.confirmedReceipts??null));
  const target=Number((balanceReport||latest||{}).target||410);
  const updatedAt=actual?(balanceReport.walletBalanceUpdatedAt||balanceReport.balanceUpdatedAt||balanceReport.observedAt):null;
+ const balanceDate=updatedAt?String(updatedAt).slice(0,10):"";
+ const postBalanceTransactions=actual?transactions.filter(tx=>{
+  const txDate=String(tx.claimedAt||tx.soldAt||tx.date||"").slice(0,10);
+  return txDate&&balanceDate&&txDate>balanceDate;
+ }):[];
+ const postBalanceReceipts=postBalanceTransactions.reduce((sum,tx)=>sum+Number(tx.amount||0),0);
+ const balance=actual?Number(balanceReport.walletBalance)+postBalanceReceipts:(transactions.length?estimated:(latest?.confirmedReceipts??null));
  const timeKnown=!!updatedAt&&String(updatedAt).includes("T");
  const age=updatedAt?Math.max(0,Date.now()-Date.parse(updatedAt)):null;
  const stale=actual&&age!=null&&age>(timeKnown?24:36)*3600000;
  const updatedLabel=updatedAt?(timeKnown?new Date(updatedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):new Date(updatedAt).toLocaleDateString("id-ID",{dateStyle:"medium"})+" (jam tidak dicatat)"):"waktu pembaruan tidak tersedia";
  const delta=actual?Number((balance-estimated).toFixed(8)):null;
- const reconciliation=actual&&transactions.length&&Math.abs(delta)>=0.00005
-  ?'<p class="data-note">Rekonsiliasi: saldo wallet '+fmt(balance)+' FLOWER; baseline + transaksi '+fmt(estimated)+' FLOWER. Selisih '+(delta>0?"+":"")+fmt(delta)+' FLOWER belum terjelaskan.</p>'
-  :(actual?'<p class="data-note">Saldo wallet terkonfirmasi menjadi acuan target. Catatan transaksi ditampilkan terpisah.</p>':'<p class="data-note">Saldo belum terverifikasi. '+(transactions.length?'Estimasi berasal dari baseline historis 4.632 FLOWER ditambah transaksi tercatat.':'Belum ada saldo atau transaksi yang dapat dihitung.')+'</p>');
+ const reconciliation=actual&&postBalanceTransactions.length
+  ?'<p class="data-note">Perhitungan target: saldo wallet '+fmt(balanceReport.walletBalance)+' FLOWER per '+esc(balanceDate)+' + transaksi setelahnya '+fmt(postBalanceReceipts)+' FLOWER ('+postBalanceTransactions.length+' transaksi). Transaksi sebelum tanggal saldo tidak dihitung ulang.</p>'
+  :(actual?'<p class="data-note">Saldo wallet terkonfirmasi menjadi acuan target. Belum ada transaksi setelah tanggal saldo yang perlu ditambahkan.</p>':'<p class="data-note">Saldo belum terverifikasi. '+(transactions.length?'Estimasi berasal dari baseline historis 4.632 FLOWER ditambah transaksi tercatat.':'Belum ada saldo atau transaksi yang dapat dihitung.')+'</p>');
  const remaining=balance==null?null:Math.max(0,target-Number(balance));
  const pct=balance==null||!target?null:Math.min(100,Number(balance)/target*100);
- return '<section class="card recurring-event backup-card market-target sfl-goal-hero"><div class="sfl-goal-top"><div><span class="sfl-goal-kicker">TARGET UTAMA</span><h3>'+fmt(target)+' FLOWER</h3></div><span class="recurring-badge">'+(actual?(stale?"Saldo perlu diperbarui":"Wallet terkonfirmasi"):"Estimasi penerimaan")+'</span></div><div class="sfl-goal-number">'+fmt(balance)+' <span>/ '+fmt(target)+' FLOWER</span></div><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><div class="sfl-goal-foot"><strong>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</strong><span>'+(remaining==null?"Saldo belum diketahui":"Sisa "+fmt(remaining)+" FLOWER")+'</span></div><small class="sfl-goal-status">'+(actual?"Saldo wallet diperbarui: "+updatedLabel+(stale?" · PERLU KONFIRMASI ULANG":""):"Saldo wallet belum terverifikasi")+'</small></section>'+reconciliation;
+ return '<section class="card recurring-event backup-card market-target sfl-goal-hero"><div class="sfl-goal-top"><div><span class="sfl-goal-kicker">TARGET UTAMA</span><h3>'+fmt(target)+' FLOWER</h3></div><span class="recurring-badge">'+(actual?(postBalanceTransactions.length?"Saldo + transaksi baru":(stale?"Saldo perlu diperbarui":"Wallet terkonfirmasi")):"Estimasi penerimaan")+'</span></div><div class="sfl-goal-number">'+fmt(balance)+' <span>/ '+fmt(target)+' FLOWER</span></div><div class="progress"><span style="width:'+(pct==null?0:pct)+'%"></span></div><div class="sfl-goal-foot"><strong>'+(pct==null?"Progres belum tersedia":pct.toFixed(2)+"% tercapai")+'</strong><span>'+(remaining==null?"Saldo belum diketahui":"Sisa "+fmt(remaining)+" FLOWER")+'</span></div><small class="sfl-goal-status">'+(actual?"Saldo wallet diperbarui: "+updatedLabel+(stale?" · PERLU KONFIRMASI ULANG":"")+(postBalanceTransactions.length?" · termasuk transaksi setelah saldo wallet":""):"Saldo wallet belum terverifikasi")+'</small></section>'+reconciliation;
 }
 
 function buildSflDashboardMarketHtml(){
