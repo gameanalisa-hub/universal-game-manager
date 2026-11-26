@@ -81,16 +81,18 @@ function buildSflDashboardMarketHtml(){
  const allowed=new Set((seasonCrops?[...seasonCrops.crops,...seasonCrops.fruits,...seasonCrops.greenhouse,...seasonCrops.flowers]:SFL_SEASONS.flatMap(season=>{const d=SFL_SEASON_DATA[season];return [...d.crops,...d.fruits,...d.greenhouse,...d.flowers]})).map(x=>String(x).trim().toLowerCase()));
  const fmt=v=>Number(v).toLocaleString("id-ID",{maximumFractionDigits:8});
  const observed=latest?.observedAt?new Date(latest.observedAt).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"}):"";
- if(!latest||!previous)return '<section class="card sfl-dashboard-market"><div class="recurring-heading"><h3>Harga tanaman hari ini</h3><span class="recurring-badge">Menunggu data</span></div><p class="data-note">Belum tersedia dua snapshot harga untuk menghitung persentase perubahan. Feed otomatis tetap mengambil data setiap dua jam.</p></section>';
+ const empty='<p class="data-note">Belum tersedia dua snapshot harga. Feed otomatis perlu mengambil setidaknya dua snapshot untuk menghitung perubahan.</p>';
+ if(!latest||!previous)return '<section class="card sfl-dashboard-market"><div class="recurring-heading"><h3>Harga tanaman hari ini</h3><span class="recurring-badge">Menunggu data</span></div>'+empty+'</section>';
  const oldPrices=new Map(previous.marketPrices.map(p=>[String(p.item||"").trim().toLowerCase(),Number(p.p2pPrice)]));
  const rows=latest.marketPrices.map(p=>{
   const key=String(p.item||"").trim().toLowerCase(),before=oldPrices.get(key),now=Number(p.p2pPrice);
   if(!p.item||!allowed.has(key)||!Number.isFinite(before)||before<=0||!Number.isFinite(now)||now<=0)return null;
-  const change=(now-before)/before*100;
-  return {item:p.item,change};
- }).filter(Boolean).sort((a,b)=>a.item.localeCompare(b.item,"id"));
- const table=rows.length?'<div class="table-wrap"><table class="data-table"><thead><tr><th>Nama seed</th><th>Harga naik %</th><th>Harga turun %</th></tr></thead><tbody>'+rows.map(p=>'<tr><td><b>'+esc(p.item)+'</b></td><td class="'+(p.change>0?'up':'')+'">'+(p.change>0?'+'+p.change.toFixed(2)+'%':'—')+'</td><td class="'+(p.change<0?'down':'')+'">'+(p.change<0?p.change.toFixed(2)+'%':'—')+'</td></tr>').join("")+'</tbody></table></div>':'<p class="data-note">Belum ada perubahan harga untuk seed pada musim ini.</p>';
- return '<section class="card sfl-dashboard-market"><div class="recurring-heading"><h3>Harga tanaman hari ini</h3><span class="recurring-badge">'+(activeSeason?activeSeason:"Semua musim")+'</span></div><p class="data-note">Perubahan dibanding snapshot sebelumnya · '+esc(observed)+'</p>'+(activeSeason?'':'<p class="data-note">Pilih dan konfirmasi musim aktif di menu Market agar daftar hanya menampilkan seed sesuai musim.</p>')+table+'<p class="data-note">Persentase menunjukkan perubahan harga pasar, bukan jaminan profit farming. Periksa biaya benih, waktu tumbuh, dan stok sebelum menanam.</p><button class="btn" type="button" data-sfl-tab="sflMarket">Buka analisis market</button></section>';
+  return {item:p.item,price:now,change:(now-before)/before*100};
+ }).filter(Boolean);
+ const renderTable=(items,type)=>items.length?'<div class="table-wrap"><table class="data-table"><thead><tr><th>Nama seed</th><th>Harga seed</th><th>Harga naik %</th><th>Harga turun %</th></tr></thead><tbody>'+items.map(p=>'<tr><td><b>'+esc(p.item)+'</b></td><td>'+fmt(p.price)+' FLOWER</td><td class="'+(type==="up"?'up':'')+'">'+(type==="up"?'+'+p.change.toFixed(2)+'%':'—')+'</td><td class="'+(type==="down"?'down':'')+'">'+(type==="down"?p.change.toFixed(2)+'%':'—')+'</td></tr>').join("")+'</tbody></table></div>':'<p class="data-note">Belum ada seed dengan perubahan harga '+(type==="up"?'naik':'turun')+' pada musim ini.</p>';
+ const rising=rows.filter(p=>p.change>0).sort((a,b)=>b.change-a.change).slice(0,5);
+ const falling=rows.filter(p=>p.change<0).sort((a,b)=>a.change-b.change).slice(0,5);
+ return '<section class="card sfl-dashboard-market"><div class="recurring-heading"><h3>Harga tanaman hari ini</h3><span class="recurring-badge">'+(activeSeason?activeSeason:"Semua musim")+'</span></div><p class="data-note">Perubahan dibanding snapshot sebelumnya · '+esc(observed)+'</p>'+(activeSeason?'':'<p class="data-note">Pilih dan konfirmasi musim aktif di menu Market agar daftar hanya menampilkan seed sesuai musim.</p>')+'<h4>Top 5 harga naik</h4>'+renderTable(rising,"up")+'<h4>Top 5 harga turun</h4>'+renderTable(falling,"down")+'<p class="data-note">Harga seed dan persentase berasal dari feed market. Kenaikan harga bukan jaminan profit farming.</p><button class="btn" type="button" data-sfl-tab="sflMarket">Buka analisis market</button></section>';
 }
 function renderMarketReports(){
  const root=$("sflMarketList");if(!root)return;
